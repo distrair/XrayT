@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Version tag for release (e.g. v1.0.1). Leave blank to auto-generate from build number.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -17,6 +22,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Compute App Version
+        id: version
+        run: |
+          if [ -n "${{ inputs.tag_name }}" ]; then
+            TAG="${{ inputs.tag_name }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+          else
+            TAG="v1.0.${{ github.run_number }}"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Building with Version Name: ${TAG}, Version Code: ${{ github.run_number }}"
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -26,9 +44,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Download libXray.aar
+      - name: Download latest libXray.aar
+        id: libxray
         run: |
           mkdir -p app/libs
+          XRAY_TAG=$(curl -sSL -H "User-Agent: GitHubActions" https://api.github.com/repos/XTLS/libXray/releases/latest | grep '"tag_name":' | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          echo "xray_tag=${XRAY_TAG:-latest}" >> $GITHUB_OUTPUT
+          echo "Bundling libXray: ${XRAY_TAG:-latest}"
+
           curl -sSL -o libxray.zip https://github.com/XTLS/libXray/releases/latest/download/libxray-android.zip
           unzip -j libxray.zip "*/libXray.aar" -d app/libs/
           rm -f libxray.zip
@@ -38,25 +61,33 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName=${{ steps.version.outputs.tag }}
 
       - name: Prepare APK for Release
         run: |
+          cp app/build/outputs/apk/release/app-release.apk XrayT-${{ steps.version.outputs.tag }}.apk
           cp app/build/outputs/apk/release/app-release.apk XrayT-release.apk
-          ls -lh XrayT-release.apk
+          ls -lh XrayT-*.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: XrayT-release-apk
+          name: XrayT-${{ steps.version.outputs.tag }}
           path: XrayT-release.apk
           retention-days: 14
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: XrayT-release.apk
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Release ${{ steps.version.outputs.tag }}
+          body: |
+            ### Automated Release `${{ steps.version.outputs.tag }}`
+            - **Bundled libXray core**: `${{ steps.libxray.outputs.xray_tag }}`
+            - **Build number (versionCode)**: `${{ github.run_number }}`
+          files: |
+            XrayT-${{ steps.version.outputs.tag }}.apk
+            XrayT-release.apk
           generate_release_notes: true
           draft: false
           prerelease: false

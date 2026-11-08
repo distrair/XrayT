@@ -7,12 +7,16 @@ android {
     namespace = "app.xrayt"
     compileSdk = 35
     buildToolsVersion = "35.0.0"
+
+    val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 1
+    val vName = (project.findProperty("appVersionName") as? String) ?: "1.0"
+
     defaultConfig {
         applicationId = "app.xrayt"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = vCode
+        versionName = vName
     }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
