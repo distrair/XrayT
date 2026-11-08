@@ -1,6 +1,6 @@
 # XrayT – Xray-core Android client (core TUN only)
-> [!CAUTION]
-> THIS IS EXTREMLY VIBE CODED, USE AT YOUR RISK, I DO NOT KNOW WHAT THE FUCK DID CLAUDE AND GEMINI WRITE HERE, IT WORKS FOR ME, IT MIGHT BE NOT FOR YOU
+# > [!CAUTION]
+# > THIS IS EXTREMLY VIBE CODED, USE AT YOUR RISK, I DO NOT KNOW WHAT THE FUCK DID CLAUDE AND GEMINI WRITE HERE, IT WORKS FOR ME, IT MIGHT BE NOT FOR YOU
 
 1. Download `libXray.aar` from the XTLS/libXray releases -> `app/libs/`
    (it must be built against an Xray-core version that includes the TUN inbound).
