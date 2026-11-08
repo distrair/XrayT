@@ -3,13 +3,17 @@ package app.xrayt
 import android.app.NotificationChannel
 import android.app.Notification
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import libXray.DialerController
 import libXray.LibXray
@@ -19,12 +23,43 @@ import java.io.File
 class XrayVpnService : VpnService() {
     companion object {
         const val ACTION_STOP = "app.xrayt.STOP"
+        const val ACTION_STATE_CHANGED = "app.xrayt.VPN_STATE_CHANGED"
+        const val ACTION_QUERY_STATE = "app.xrayt.VPN_QUERY_STATE"
         val running = MutableStateFlow(false)
         val lastError = MutableStateFlow<String?>(null)
         private var envReady = false
     }
 
     private var pfd: ParcelFileDescriptor? = null
+
+    private val queryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == ACTION_QUERY_STATE) {
+                broadcastState(running.value, lastError.value)
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        ContextCompat.registerReceiver(
+            this,
+            queryReceiver,
+            IntentFilter(ACTION_QUERY_STATE),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    private fun broadcastState(isRunning: Boolean, err: String? = null) {
+        running.value = isRunning
+        lastError.value = err
+        val intent = Intent(ACTION_STATE_CHANGED).apply {
+            setPackage(packageName)
+            putExtra("running", isRunning)
+            putExtra("error", err)
+        }
+        sendBroadcast(intent)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) { stopVpn(); return START_NOT_STICKY }
@@ -75,9 +110,10 @@ class XrayVpnService : VpnService() {
                 val err = res.optString("error").ifBlank { "Failed to start Xray" }
                 error(err)
             }
-            running.value = true
+            broadcastState(true)
         } catch (e: Throwable) {
-            lastError.value = e.message ?: e.toString()
+            val errMsg = e.message ?: e.toString()
+            broadcastState(false, errMsg)
             stopVpn()
         }
     }
@@ -122,11 +158,15 @@ class XrayVpnService : VpnService() {
         } catch (_: Throwable) {}
         try { pfd?.close() } catch (_: Throwable) {}
         pfd = null
-        running.value = false
+        broadcastState(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
     override fun onRevoke() = stopVpn()
-    override fun onDestroy() { stopVpn(); super.onDestroy() }
+    override fun onDestroy() {
+        try { unregisterReceiver(queryReceiver) } catch (_: Exception) {}
+        stopVpn()
+        super.onDestroy()
+    }
 }

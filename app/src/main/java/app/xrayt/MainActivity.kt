@@ -1,9 +1,13 @@
 package app.xrayt
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -65,6 +70,38 @@ class MainActivity : ComponentActivity() {
     }
     private fun disconnect() {
         startService(Intent(this, XrayVpnService::class.java).setAction(XrayVpnService.ACTION_STOP))
+    }
+
+    private val stateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == XrayVpnService.ACTION_STATE_CHANGED) {
+                XrayVpnService.running.value = intent.getBooleanExtra("running", false)
+                XrayVpnService.lastError.value = intent.getStringExtra("error")
+            }
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        ContextCompat.registerReceiver(
+            this,
+            stateReceiver,
+            IntentFilter(XrayVpnService.ACTION_STATE_CHANGED),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+        sendBroadcast(Intent(XrayVpnService.ACTION_QUERY_STATE).setPackage(packageName))
+        val cm = getSystemService(ConnectivityManager::class.java)
+        val hasVpn = cm?.allNetworks?.any {
+            cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true
+        } ?: false
+        if (!hasVpn) {
+            XrayVpnService.running.value = false
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        try { unregisterReceiver(stateReceiver) } catch (_: Exception) {}
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
