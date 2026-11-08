@@ -10,4 +10,13 @@ to update just replace it with the new one
 1. you dont need to download the .dat files, they are autoupdated daily (this is what claude told me)
 2. then just compile it with the noted command below
 
+some features are
+- hwid support (just type some random bullshit in the text field)
+- **removes `inbounds` if imported subsctiption has it (useful if you use russian apps that scans for localhost open ports)**
+- **tunnel only, it does not has hev-socks5 and it will not have it why the fuck you should use it on android xray literally has tun support you dumbfuck**
+- per app split tunneling
+- autoupdating .dat files
+- pure kotlin (you can verify it by looking at the right part of your lcd or oled or crt screen)
+- pure jetpack compose (⚡lightning fast⚡)
+
 note to self, this is how you compile the release project you fucking dumbass: `./gradlew clean assembleRelease`
