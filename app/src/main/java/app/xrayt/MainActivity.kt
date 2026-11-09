@@ -379,7 +379,13 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                             }
                             geoBusy = false
                         }
-                    }) { Text(if (geoBusy) "Updating…" else "Update") }
+                    }) {
+                        if (geoBusy) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                        }
+                        Text(if (geoBusy) "Updating…" else "Update")
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Auto-update daily", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -445,7 +451,13 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     }
                                     busy = null
                                 }
-                            }) { Text(if (busy == s.id) "Updating…" else "Update") }
+                            }) {
+                                if (busy == s.id) {
+                                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                Text(if (busy == s.id) "Updating…" else "Update")
+                            }
                             TextButton(onClick = { edit = s }) { Text("Edit") }
                             TextButton(onClick = { save(subs.filter { it.id != s.id }) }) { Text("Delete") }
                         }
