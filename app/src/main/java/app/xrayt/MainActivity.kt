@@ -307,7 +307,6 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("CURRENT PROFILE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(profileName, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 sub?.name?.ifBlank { sub.url } ?: "Choose a profile from Subscriptions",
