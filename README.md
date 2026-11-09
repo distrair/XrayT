@@ -28,19 +28,19 @@ Release APKs must be signed with a configured key. Keep the keystore and its pas
 For a local release build, create an ignored `signing.properties` file in the project root:
 
 ```properties
-storeFile=Morphe.p12
+storeFile=XrayT-release.p12
 storePassword=YOUR_KEYSTORE_PASSWORD
-keyAlias=morphe
+keyAlias=xrayt-release
 keyPassword=YOUR_KEY_PASSWORD
 ```
 
-Replace the password values with the values for the exported keystore. If a password is intentionally empty, leave its value blank. Then run `./gradlew assembleRelease`.
+The local `signing.properties` already contains the generated key's credentials. Keep it private. Then run `./gradlew assembleRelease`.
 
 For GitHub Actions, add these repository secrets under **Settings → Secrets and variables → Actions**:
 
-- `ANDROID_KEYSTORE_BASE64`: output of `base64 -w0 Morphe.p12`
+- `ANDROID_KEYSTORE_BASE64`: output of `base64 -w0 XrayT-release.p12`
 - `ANDROID_KEYSTORE_PASSWORD`: keystore password
-- `ANDROID_KEY_ALIAS`: `morphe`
+- `ANDROID_KEY_ALIAS`: `xrayt-release`
 - `ANDROID_KEY_PASSWORD`: private key password
 
 The workflow decodes the keystore into the runner's temporary directory and signs the release APK there.
