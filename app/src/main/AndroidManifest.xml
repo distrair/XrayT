@@ -8,6 +8,7 @@
 
     <application
         android:label="XrayT"
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
         android:extractNativeLibs="true"
         android:theme="@style/AppTheme">
