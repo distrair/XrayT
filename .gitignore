@@ -45,6 +45,7 @@ proguard/
 *.p12
 *.pfx
 *.bks
+signing.properties
 
 # External native build folder
 .externalNativeBuild
