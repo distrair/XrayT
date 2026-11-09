@@ -328,7 +328,11 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
         }
 
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Column(
+                modifier = Modifier.offset(y = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) {
                 Button(
                     onClick = { if (running) onDisconnect() else onConnect() },
                     modifier = Modifier.size(184.dp),
