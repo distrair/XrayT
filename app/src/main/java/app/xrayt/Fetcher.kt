@@ -7,7 +7,7 @@ import java.net.URL
 
 object Fetcher {
     val defaultUserAgent: String
-        get() = "v2rayNG/${BuildConfig.VERSION_NAME}"
+        get() = "v2rayNG/${BuildConfig.VERSION_NAME.removePrefix("v")}"
 
     private fun parseHeader(line: String): Pair<String, String>? {
         val separator = line.indexOf(':')
