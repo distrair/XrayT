@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.outlined.Apps
@@ -429,15 +430,21 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
             items(subs, key = { it.id }) { s ->
+                var menuExpanded by remember { mutableStateOf(false) }
                 Card(
                     Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(s.name.ifBlank { s.url }, style = MaterialTheme.typography.titleLarge,
-                            maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                s.name.ifBlank { s.url },
+                                Modifier.weight(1f),
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                             TextButton(onClick = {
                                 scope.launch {
                                     busy = s.id
@@ -456,8 +463,24 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     Text("Update")
                                 }
                             }
-                            TextButton(onClick = { edit = s }) { Text("Edit") }
-                            TextButton(onClick = { save(subs.filter { it.id != s.id }) }) { Text("Delete") }
+                            Box {
+                                IconButton(onClick = { menuExpanded = true }) {
+                                    Icon(Icons.Filled.MoreVert, contentDescription = "Subscription actions")
+                                }
+                                DropdownMenu(
+                                    expanded = menuExpanded,
+                                    onDismissRequest = { menuExpanded = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Edit") },
+                                        onClick = { menuExpanded = false; edit = s }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Delete") },
+                                        onClick = { menuExpanded = false; save(subs.filter { it.id != s.id }) }
+                                    )
+                                }
+                            }
                         }
                         if (s.configs.isEmpty()) {
                             Text("No profiles yet. Update this subscription to fetch them.",
