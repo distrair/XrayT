@@ -291,12 +291,12 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
     val config = sub?.configs?.getOrNull(store.activeIdx)
     val profileName = config?.let(::configName) ?: "No profile selected"
     val buttonContainer by animateColorAsState(
-        targetValue = if (running) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primary,
+        targetValue = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "connectionButtonContainer"
     )
     val buttonContent by animateColorAsState(
-        targetValue = if (running) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary,
+        targetValue = if (running) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "connectionButtonContent"
     )
