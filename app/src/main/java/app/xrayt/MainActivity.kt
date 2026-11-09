@@ -539,6 +539,7 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
     var hwid by remember { mutableStateOf(s.hwid) }
     var ua by remember { mutableStateOf(s.userAgent) }
     var hdr by remember { mutableStateOf(s.extraHeaders) }
+    var advancedExpanded by remember { mutableStateOf(hwid.isNotBlank() || ua.isNotBlank() || hdr.isNotBlank()) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Subscription") },
@@ -553,9 +554,17 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 F("Name", name) { name = it }
                 F("URL", url) { url = it }
-                F("x-hwid", hwid) { hwid = it }
-                F("User-Agent", ua) { ua = it }
-                F("Extra request headers (Name: value per line)", hdr, 3) { hdr = it }
+                TextButton(
+                    onClick = { advancedExpanded = !advancedExpanded },
+                    contentPadding = PaddingValues(horizontal = 0.dp)
+                ) {
+                    Text(if (advancedExpanded) "Hide advanced settings" else "Advanced settings")
+                }
+                if (advancedExpanded) {
+                    F("x-hwid", hwid) { hwid = it }
+                    F("User-Agent", ua) { ua = it }
+                    F("Extra request headers (Name: value per line)", hdr, 3) { hdr = it }
+                }
             }
         }
     )
