@@ -16,14 +16,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
@@ -36,6 +40,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -141,6 +146,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val XrayShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(36.dp)
+)
+
 @Composable
 fun XrayTTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -173,6 +186,7 @@ fun XrayTTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
+        shapes = XrayShapes,
         content = content
     )
 }
@@ -195,32 +209,71 @@ fun Root(store: Store, onConnect: () -> Unit, onDisconnect: () -> Unit) {
             NavItem("Apps", Icons.Filled.Apps, Icons.Outlined.Apps)
         )
     }
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        bottomBar = {
-        NavigationBar {
-            navItems.forEachIndexed { i, item ->
-                NavigationBarItem(
-                    selected = tab == i,
-                    onClick = { tab = i },
-                    icon = {
-                        Icon(
-                            imageVector = if (tab == i) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.label
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (maxWidth >= 600.dp) {
+            Row(Modifier.fillMaxSize()) {
+                NavigationRail {
+                    navItems.forEachIndexed { i, item ->
+                        NavigationRailItem(
+                            selected = tab == i,
+                            onClick = { tab = i },
+                            icon = {
+                                Icon(
+                                    imageVector = if (tab == i) item.selectedIcon else item.unselectedIcon,
+                                    contentDescription = null
+                                )
+                            },
+                            label = { Text(item.label) },
+                            alwaysShowLabel = true
                         )
-                    },
-                    label = { Text(item.label) }
-                )
+                    }
+                }
+                Box(Modifier.weight(1f).fillMaxHeight()) {
+                    AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
+                }
+            }
+        } else {
+            Scaffold(
+                containerColor = MaterialTheme.colorScheme.background,
+                bottomBar = {
+                    NavigationBar {
+                        navItems.forEachIndexed { i, item ->
+                            NavigationBarItem(
+                                selected = tab == i,
+                                onClick = { tab = i },
+                                icon = {
+                                    Icon(
+                                        imageVector = if (tab == i) item.selectedIcon else item.unselectedIcon,
+                                        contentDescription = null
+                                    )
+                                },
+                                label = { Text(item.label) }
+                            )
+                        }
+                    }
+                }
+            ) { pad ->
+                Box(Modifier.padding(pad).fillMaxSize()) {
+                    AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
+                }
             }
         }
-    }) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when (tab) {
-                0 -> ConnectTab(store, subs, onConnect, onDisconnect)
-                1 -> SubsTab(store, subs, save)
-                else -> AppsTab(store)
-            }
-        }
+    }
+}
+
+@Composable
+private fun AppPageContent(
+    tab: Int,
+    store: Store,
+    subs: List<Subscription>,
+    save: (List<Subscription>) -> Unit,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit
+) {
+    when (tab) {
+        0 -> ConnectTab(store, subs, onConnect, onDisconnect)
+        1 -> SubsTab(store, subs, save)
+        else -> AppsTab(store)
     }
 }
 
@@ -236,11 +289,22 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
     val sub = subs.firstOrNull { it.id == store.activeSub }
     val config = sub?.configs?.getOrNull(store.activeIdx)
     val profileName = config?.let(::configName) ?: "No profile selected"
+    val buttonContainer by animateColorAsState(
+        targetValue = if (running) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.primary,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "connectionButtonContainer"
+    )
+    val buttonContent by animateColorAsState(
+        targetValue = if (running) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onPrimary,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "connectionButtonContent"
+    )
 
-    Column(
-        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            Modifier.widthIn(max = 640.dp).fillMaxHeight().fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("CURRENT PROFILE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(profileName, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -256,7 +320,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
         err?.let {
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                shape = RoundedCornerShape(24.dp)
+                shape = MaterialTheme.shapes.large
             ) {
                 Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
             }
@@ -264,13 +328,13 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                FilledTonalButton(
+                Button(
                     onClick = { if (running) onDisconnect() else onConnect() },
                     modifier = Modifier.size(184.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = if (running) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = buttonContainer,
+                        contentColor = buttonContent
                     )
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -291,7 +355,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -327,6 +391,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                 }
             }
         }
+        }
     }
 }
 
@@ -341,7 +406,8 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
 
     Column(Modifier.fillMaxSize()) {
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
+            Modifier.widthIn(max = 840.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
+                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -349,19 +415,19 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                 Text("Manage subscriptions and choose a route", style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledTonalButton(onClick = { edit = Subscription() }, shape = RoundedCornerShape(20.dp)) {
+            FilledTonalButton(onClick = { edit = Subscription() }, shape = MaterialTheme.shapes.large) {
                 Text("Add")
             }
         }
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().weight(1f).align(Alignment.CenterHorizontally),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(subs, key = { it.id }) { s ->
                 Card(
                     Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
+                    shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 ) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -391,11 +457,13 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                         s.configs.forEachIndexed { i, c ->
                             val selected = activeSub == s.id && activeIdx == i
                             Surface(
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    activeSub = s.id; activeIdx = i; store.activeSub = s.id; store.activeIdx = i
-                                },
-                                shape = RoundedCornerShape(20.dp),
-                                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+                                modifier = Modifier.fillMaxWidth().selectable(
+                                    selected = selected,
+                                    role = Role.RadioButton,
+                                    onClick = { activeSub = s.id; activeIdx = i; store.activeSub = s.id; store.activeIdx = i }
+                                ),
+                                shape = MaterialTheme.shapes.medium,
+                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                             ) {
                                 Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected = selected, onClick = null)
@@ -468,7 +536,8 @@ fun AppsTab(store: Store) {
     var q by remember { mutableStateOf("") }
     val apps by produceState(emptyList<AppInfo>()) { value = withContext(Dispatchers.IO) { loadApps(ctx) } }
 
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+      Column(Modifier.widthIn(max = 840.dp).fillMaxHeight().fillMaxWidth().padding(horizontal = 20.dp)) {
         Column(Modifier.padding(top = 18.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("App routing", style = MaterialTheme.typography.headlineSmall)
             Text("Choose which apps use your Xray connection", style = MaterialTheme.typography.bodyMedium,
@@ -480,9 +549,13 @@ fun AppsTab(store: Store) {
         ).forEach { (m, t) ->
             val selected = mode == m
             Surface(
-                modifier = Modifier.fillMaxWidth().clickable { mode = m; store.mode = m },
-                shape = RoundedCornerShape(24.dp),
-                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
+                modifier = Modifier.fillMaxWidth().selectable(
+                    selected = selected,
+                    role = Role.RadioButton,
+                    onClick = { mode = m; store.mode = m }
+                ),
+                shape = MaterialTheme.shapes.large,
+                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
             ) {
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selected, null)
@@ -493,7 +566,7 @@ fun AppsTab(store: Store) {
         }
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(q, { q = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp), singleLine = true)
+            shape = MaterialTheme.shapes.extraLarge, singleLine = true)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
             items(apps.filter { it.label.contains(q, true) || it.pkg.contains(q, true) }, key = { it.pkg }) { a ->
                 val checked = a.pkg in sel
@@ -501,13 +574,18 @@ fun AppsTab(store: Store) {
                     headlineContent = { Text(a.label) },
                     supportingContent = { Text(a.pkg, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     leadingContent = { Checkbox(checked, null) },
-                    modifier = Modifier.clickable {
-                        sel = if (checked) sel - a.pkg else sel + a.pkg
-                        store.apps = sel
-                    },
+                    modifier = Modifier.toggleable(
+                        value = checked,
+                        role = Role.Checkbox,
+                        onValueChange = {
+                            sel = if (it) sel + a.pkg else sel - a.pkg
+                            store.apps = sel
+                        }
+                    ),
                     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
                 )
             }
         }
+      }
     }
 }
