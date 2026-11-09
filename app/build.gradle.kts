@@ -18,12 +18,11 @@ val releaseStoreFile = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
 val releaseStorePassword = signingValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
 val releaseKeyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD")
-val hasReleaseSigning = listOf(
-    releaseStoreFile,
-    releaseStorePassword,
-    releaseKeyAlias,
-    releaseKeyPassword,
-).all { !it.isNullOrBlank() } && releaseStoreFile?.let { rootProject.file(it).isFile } == true
+val hasReleaseSigning = !releaseStoreFile.isNullOrBlank()
+    && releaseStorePassword != null
+    && !releaseKeyAlias.isNullOrBlank()
+    && releaseKeyPassword != null
+    && rootProject.file(releaseStoreFile).isFile
 
 android {
     namespace = "app.xrayt"
