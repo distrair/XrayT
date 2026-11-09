@@ -10,7 +10,7 @@
         android:label="XrayT"
         android:allowBackup="false"
         android:extractNativeLibs="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/AppTheme">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
