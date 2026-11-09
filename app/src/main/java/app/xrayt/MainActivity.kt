@@ -17,6 +17,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +36,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -192,7 +195,9 @@ fun Root(store: Store, onConnect: () -> Unit, onDisconnect: () -> Unit) {
             NavItem("Apps", Icons.Filled.Apps, Icons.Outlined.Apps)
         )
     }
-    Scaffold(bottomBar = {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        bottomBar = {
         NavigationBar {
             navItems.forEachIndexed { i, item ->
                 NavigationBarItem(
@@ -229,35 +234,99 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
     var geoTs by remember { mutableLongStateOf(store.geoUpdated) }
     var geoBusy by remember { mutableStateOf(false) }
     val sub = subs.firstOrNull { it.id == store.activeSub }
-    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(if (running) "Connected" else "Disconnected", style = MaterialTheme.typography.headlineMedium)
-        Text(sub?.let { "${it.name.ifBlank { it.url }} / ${it.configs.getOrNull(store.activeIdx)?.let(::configName) ?: "-"}" }
-            ?: "Pick a config in Subscriptions")
-        err?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(onClick = { if (running) onDisconnect() else onConnect() }) { Text(if (running) "Disconnect" else "Connect") }
-        Text("Changes to per-app settings apply on the next connect.", style = MaterialTheme.typography.bodySmall)
+    val config = sub?.configs?.getOrNull(store.activeIdx)
+    val profileName = config?.let(::configName) ?: "No profile selected"
 
-        HorizontalDivider()
-        Text("Geo files (Loyalsoldier/v2ray-rules-dat)", style = MaterialTheme.typography.titleMedium)
-        Text(if (geoTs == 0L) "Not downloaded yet" else "Updated: " + DateFormat.getDateTimeInstance().format(Date(geoTs)))
-        Button(enabled = !geoBusy, onClick = {
-            scope.launch {
-                geoBusy = true
-                try {
-                    withContext(Dispatchers.IO) { GeoUpdater.update(ctx) }
-                    geoTs = store.geoUpdated
-                } catch (e: Exception) {
-                    Toast.makeText(ctx, e.message ?: "Geo update failed", Toast.LENGTH_LONG).show()
-                }
-                geoBusy = false
-            }
-        }) { Text(if (geoBusy) "Updating…" else "Update now") }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Switch(geoAuto, { geoAuto = it; store.geoAuto = it; GeoUpdater.schedule(ctx, it) })
-            Spacer(Modifier.width(8.dp))
-            Text("Auto-update daily")
+    Column(
+        Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("CURRENT PROFILE", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+            Text(profileName, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                sub?.name?.ifBlank { sub.url } ?: "Choose a profile from Subscriptions",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Text("New geo files are used on the next connect.", style = MaterialTheme.typography.bodySmall)
+
+        err?.let {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onErrorContainer)
+            }
+        }
+
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                FilledTonalButton(
+                    onClick = { if (running) onDisconnect() else onConnect() },
+                    modifier = Modifier.size(184.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = if (running) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(40.dp))
+                        Text(if (running) "Disconnect" else "Connect", style = MaterialTheme.typography.titleMedium)
+                    }
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(if (running) "Connected" else "Ready when you are", style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Per-app routing settings apply next time you connect",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(28.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Geo files", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (geoTs == 0L) "Not downloaded yet" else "Updated ${DateFormat.getDateTimeInstance().format(Date(geoTs))}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    TextButton(enabled = !geoBusy, onClick = {
+                        scope.launch {
+                            geoBusy = true
+                            try {
+                                withContext(Dispatchers.IO) { GeoUpdater.update(ctx) }
+                                geoTs = store.geoUpdated
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, e.message ?: "Geo update failed", Toast.LENGTH_LONG).show()
+                            }
+                            geoBusy = false
+                        }
+                    }) { Text(if (geoBusy) "Updating…" else "Update") }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Auto-update daily", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    Switch(checked = geoAuto, onCheckedChange = {
+                        geoAuto = it
+                        store.geoAuto = it
+                        GeoUpdater.schedule(ctx, it)
+                    })
+                }
+            }
+        }
     }
 }
 
@@ -270,14 +339,35 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    Column {
-        Button(onClick = { edit = Subscription() }, modifier = Modifier.padding(16.dp)) { Text("Add subscription") }
-        LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Your profiles", style = MaterialTheme.typography.headlineSmall)
+                Text("Manage subscriptions and choose a route", style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            FilledTonalButton(onClick = { edit = Subscription() }, shape = RoundedCornerShape(20.dp)) {
+                Text("Add")
+            }
+        }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             items(subs, key = { it.id }) { s ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        Text(s.name.ifBlank { s.url }, style = MaterialTheme.typography.titleMedium)
-                        Row {
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
+                ) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(s.name.ifBlank { s.url }, style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(onClick = {
                                 scope.launch {
                                     busy = s.id
@@ -293,16 +383,26 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                             TextButton(onClick = { edit = s }) { Text("Edit") }
                             TextButton(onClick = { save(subs.filter { it.id != s.id }) }) { Text("Delete") }
                         }
+                        if (s.configs.isEmpty()) {
+                            Text("No profiles yet. Update this subscription to fetch them.",
+                                Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                         s.configs.forEachIndexed { i, c ->
-                            Row(
-                                Modifier.fillMaxWidth().clickable {
+                            val selected = activeSub == s.id && activeIdx == i
+                            Surface(
+                                modifier = Modifier.fillMaxWidth().clickable {
                                     activeSub = s.id; activeIdx = i; store.activeSub = s.id; store.activeIdx = i
-                                }.padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                },
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
                             ) {
-                                RadioButton(selected = activeSub == s.id && activeIdx == i, onClick = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text(configName(c))
+                                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected = selected, onClick = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(configName(c), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,
+                                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
                             }
                         }
                     }
@@ -368,27 +468,45 @@ fun AppsTab(store: Store) {
     var q by remember { mutableStateOf("") }
     val apps by produceState(emptyList<AppInfo>()) { value = withContext(Dispatchers.IO) { loadApps(ctx) } }
 
-    Column(Modifier.padding(16.dp)) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+        Column(Modifier.padding(top = 18.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("App routing", style = MaterialTheme.typography.headlineSmall)
+            Text("Choose which apps use your Xray connection", style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         listOf(
             AppMode.PROXY_SELECTED to "Proxy only the selected apps",
             AppMode.BYPASS_SELECTED to "Selected apps connect directly (everything else is proxied)"
         ).forEach { (m, t) ->
-            Row(Modifier.fillMaxWidth().clickable { mode = m; store.mode = m }.padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(mode == m, null); Spacer(Modifier.width(8.dp)); Text(t)
+            val selected = mode == m
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable { mode = m; store.mode = m },
+                shape = RoundedCornerShape(24.dp),
+                color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(t, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
-        OutlinedTextField(q, { q = it }, label = { Text("Search") }, modifier = Modifier.fillMaxWidth())
-        LazyColumn {
+        Spacer(Modifier.height(12.dp))
+        OutlinedTextField(q, { q = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp), singleLine = true)
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
             items(apps.filter { it.label.contains(q, true) || it.pkg.contains(q, true) }, key = { it.pkg }) { a ->
-                Row(Modifier.fillMaxWidth().clickable {
-                    sel = if (a.pkg in sel) sel - a.pkg else sel + a.pkg
-                    store.apps = sel
-                }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(a.pkg in sel, null)
-                    Spacer(Modifier.width(8.dp))
-                    Column { Text(a.label); Text(a.pkg, style = MaterialTheme.typography.bodySmall) }
-                }
+                val checked = a.pkg in sel
+                ListItem(
+                    headlineContent = { Text(a.label) },
+                    supportingContent = { Text(a.pkg, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingContent = { Checkbox(checked, null) },
+                    modifier = Modifier.clickable {
+                        sel = if (checked) sel - a.pkg else sel + a.pkg
+                        store.apps = sel
+                    },
+                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
+                )
             }
         }
     }
