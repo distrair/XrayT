@@ -585,28 +585,30 @@ fun AppsTab(store: Store) {
             Text("Choose which apps use your Xray connection", style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        listOf(
-            AppMode.PROXY_SELECTED to "Proxy only the selected apps",
-            AppMode.BYPASS_SELECTED to "Selected apps connect directly (everything else is proxied)"
-        ).forEach { (m, t) ->
-            val selected = mode == m
-            Surface(
-                modifier = Modifier.fillMaxWidth().selectable(
-                    selected = selected,
-                    role = Role.RadioButton,
-                    onClick = { mode = m; store.mode = m }
-                ),
-                shape = MaterialTheme.shapes.large,
-                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
-            ) {
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(t, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        val modeOptions = listOf(
+            AppMode.PROXY_SELECTED to "Proxy",
+            AppMode.BYPASS_SELECTED to "Bypass"
+        )
+        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            modeOptions.forEachIndexed { index, (option, label) ->
+                SegmentedButton(
+                    selected = mode == option,
+                    onClick = { mode = option; store.mode = option },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = modeOptions.size)
+                ) {
+                    Text(label)
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Text(
+            when (mode) {
+                AppMode.PROXY_SELECTED -> "Only selected apps use Xray."
+                AppMode.BYPASS_SELECTED -> "Selected apps bypass Xray; other apps use it."
+            },
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         OutlinedTextField(q, { q = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge, singleLine = true)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
