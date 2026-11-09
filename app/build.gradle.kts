@@ -1,13 +1,15 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val signingProperties = java.util.Properties().apply {
+val signingProperties = Properties().apply {
     val propertiesFile = rootProject.file("signing.properties")
     if (propertiesFile.isFile) {
-        propertiesFile.inputStream().use { load(it) }
+        propertiesFile.inputStream().use { input -> load(input) }
     }
 }
 fun signingValue(propertyName: String, environmentName: String): String? =
