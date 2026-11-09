@@ -9,24 +9,11 @@ object ConfigBuilder {
             "sniffing":{"enabled":true,"destOverride":["http","tls","quic"]}}"""
     )
 
-    /**
-     * replace = true : every inbound of the imported config is dropped, only our TUN inbound remains.
-     * replace = false: the config's own "tun" inbounds are kept untouched (custom settings preserved);
-     *                  all port-listening inbounds (socks/http/mixed/dokodemo/...) are still removed,
-     *                  and our TUN inbound is added if the config has none.
-     */
-    fun build(raw: String, replace: Boolean, tunFd: Int = -1, datDir: String = ""): String {
+    /** Imported inbounds are always dropped; only our TUN inbound remains. */
+    fun build(raw: String, tunFd: Int = -1, datDir: String = ""): String {
         val cfg = JSONObject(raw)
         val keep = JSONArray()
-        if (!replace) {
-            cfg.optJSONArray("inbounds")?.let { a ->
-                for (i in 0 until a.length()) {
-                    val o = a.getJSONObject(i)
-                    if (o.optString("protocol") == "tun") keep.put(o)
-                }
-            }
-        }
-        if (keep.length() == 0) keep.put(tunInbound())
+        keep.put(tunInbound())
         cfg.put("inbounds", keep)
         cfg.remove("inbound"); cfg.remove("inboundDetour") // legacy v2ray keys
 

@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
         }
         val intent = Intent(this, XrayVpnService::class.java).apply {
             putExtra(XrayVpnService.EXTRA_RAW_CONFIG, raw)
-            putExtra(XrayVpnService.EXTRA_REPLACE_INBOUNDS, sub.replaceInbounds)
             putExtra(XrayVpnService.EXTRA_APP_MODE, store.mode.name)
             putStringArrayListExtra(XrayVpnService.EXTRA_APPS, ArrayList(store.apps))
         }
@@ -330,14 +329,13 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
     var hwid by remember { mutableStateOf(s.hwid) }
     var ua by remember { mutableStateOf(s.userAgent) }
     var hdr by remember { mutableStateOf(s.extraHeaders) }
-    var rep by remember { mutableStateOf(s.replaceInbounds) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Subscription") },
         confirmButton = {
             TextButton(onClick = {
                 onSave(s.copy(name = name.trim(), url = url.trim(), hwid = hwid.trim(), userAgent = ua.trim(),
-                    extraHeaders = hdr, replaceInbounds = rep))
+                    extraHeaders = hdr))
             }) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
@@ -348,11 +346,6 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
                 F("x-hwid", hwid) { hwid = it }
                 F("User-Agent", ua) { ua = it }
                 F("Extra request headers (Name: value per line)", hdr, 3) { hdr = it }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(rep, { rep = it })
-                    Spacer(Modifier.width(8.dp))
-                    Text("Replace all inbounds with core TUN")
-                }
             }
         }
     )

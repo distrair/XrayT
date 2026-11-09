@@ -14,20 +14,19 @@ data class Subscription(
     val hwid: String = "",            // sent as "x-hwid" header
     val userAgent: String = "",       // custom User-Agent
     val extraHeaders: String = "",    // "Name: value" per line (the "specific request" part)
-    val replaceInbounds: Boolean = true,
     val configs: List<String> = emptyList(),
     val updatedAt: Long = 0
 ) {
     fun toJson(): JSONObject = JSONObject().put("id", id).put("name", name).put("url", url)
         .put("hwid", hwid).put("ua", userAgent).put("hdr", extraHeaders)
-        .put("replace", replaceInbounds).put("configs", JSONArray(configs)).put("t", updatedAt)
+        .put("configs", JSONArray(configs)).put("t", updatedAt)
 
     companion object {
         fun fromJson(o: JSONObject): Subscription {
             val a = o.getJSONArray("configs")
             return Subscription(
                 o.getString("id"), o.optString("name"), o.optString("url"), o.optString("hwid"),
-                o.optString("ua"), o.optString("hdr"), o.optBoolean("replace", true),
+                o.optString("ua"), o.optString("hdr"),
                 List(a.length()) { a.getString(it) }, o.optLong("t")
             )
         }

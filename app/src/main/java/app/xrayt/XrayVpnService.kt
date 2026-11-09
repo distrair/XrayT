@@ -27,7 +27,6 @@ class XrayVpnService : VpnService() {
         const val ACTION_QUERY_STATE = "app.xrayt.VPN_QUERY_STATE"
 
         const val EXTRA_RAW_CONFIG = "app.xrayt.RAW_CONFIG"
-        const val EXTRA_REPLACE_INBOUNDS = "app.xrayt.REPLACE_INBOUNDS"
         const val EXTRA_APP_MODE = "app.xrayt.APP_MODE"
         const val EXTRA_APPS = "app.xrayt.APPS"
 
@@ -86,7 +85,6 @@ class XrayVpnService : VpnService() {
 
     private data class VpnConfig(
         val rawConfig: String,
-        val replaceInbounds: Boolean,
         val mode: AppMode,
         val apps: Set<String>
     )
@@ -94,17 +92,16 @@ class XrayVpnService : VpnService() {
     private fun resolveConfig(intent: Intent?): VpnConfig {
         val rawFromIntent = intent?.getStringExtra(EXTRA_RAW_CONFIG)
         if (!rawFromIntent.isNullOrBlank()) {
-            val replaceInbounds = intent.getBooleanExtra(EXTRA_REPLACE_INBOUNDS, true)
             val modeStr = intent.getStringExtra(EXTRA_APP_MODE)
             val mode = modeStr?.let { runCatching { AppMode.valueOf(it) }.getOrNull() } ?: AppMode.PROXY_SELECTED
             val appsList = intent.getStringArrayListExtra(EXTRA_APPS) ?: emptyList<String>()
-            return VpnConfig(rawFromIntent, replaceInbounds, mode, appsList.toSet())
+            return VpnConfig(rawFromIntent, mode, appsList.toSet())
         }
 
         val store = Store(this)
         val sub = store.loadSubs().firstOrNull { it.id == store.activeSub } ?: error("No subscription selected")
         val raw = sub.configs.getOrNull(store.activeIdx) ?: error("No config selected")
-        return VpnConfig(raw, sub.replaceInbounds, store.mode, store.apps)
+        return VpnConfig(raw, store.mode, store.apps)
     }
 
     private fun startVpn(intent: Intent?) {
@@ -125,7 +122,7 @@ class XrayVpnService : VpnService() {
                 override fun protectFd(fd: Long): Boolean = protect(fd.toInt())
             })
 
-            val json = ConfigBuilder.build(config.rawConfig, config.replaceInbounds, establishedPfd.fd, filesDir.absolutePath)
+            val json = ConfigBuilder.build(config.rawConfig, establishedPfd.fd, filesDir.absolutePath)
 
             val req = JSONObject().apply {
                 put("apiVersion", LibXray.LibXrayAPIVersion)
