@@ -545,7 +545,8 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
         title = { Text("Subscription") },
         confirmButton = {
             TextButton(onClick = {
-                onSave(s.copy(name = name.trim(), url = url.trim(), hwid = hwid.trim(), userAgent = ua.trim(),
+                onSave(s.copy(name = name.trim(), url = url.trim(), hwid = hwid.trim(),
+                    userAgent = ua.trim().ifBlank { Fetcher.defaultUserAgent },
                     extraHeaders = hdr))
             }) { Text("Save") }
         },
