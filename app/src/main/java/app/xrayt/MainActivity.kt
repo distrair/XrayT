@@ -383,9 +383,9 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                     }) {
                         if (geoBusy) {
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
+                        } else {
+                            Text("Update")
                         }
-                        Text(if (geoBusy) "Updating…" else "Update")
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -449,9 +449,9 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                             }) {
                                 if (busy == s.id) {
                                     CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                                    Spacer(Modifier.width(8.dp))
+                                } else {
+                                    Text("Update")
                                 }
-                                Text(if (busy == s.id) "Updating…" else "Update")
                             }
                             TextButton(onClick = { edit = s }) { Text("Edit") }
                             TextButton(onClick = { save(subs.filter { it.id != s.id }) }) { Text("Delete") }
