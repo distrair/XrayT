@@ -87,14 +87,13 @@ jobs:
       - name: Prepare APK for Release
         run: |
           cp app/build/outputs/apk/release/app-release.apk XrayT-${{ steps.version.outputs.tag }}.apk
-          cp app/build/outputs/apk/release/app-release.apk XrayT-release.apk
           ls -lh XrayT-*.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: XrayT-${{ steps.version.outputs.tag }}
-          path: XrayT-release.apk
+          path: XrayT-${{ steps.version.outputs.tag }}.apk
           retention-days: 14
 
       - name: Create GitHub Release
@@ -108,7 +107,6 @@ jobs:
             - **Build number (versionCode)**: `${{ github.run_number }}`
           files: |
             XrayT-${{ steps.version.outputs.tag }}.apk
-            XrayT-release.apk
           generate_release_notes: true
           draft: false
           prerelease: false
