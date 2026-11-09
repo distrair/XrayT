@@ -25,6 +25,12 @@ class XrayVpnService : VpnService() {
         const val ACTION_STOP = "app.xrayt.STOP"
         const val ACTION_STATE_CHANGED = "app.xrayt.VPN_STATE_CHANGED"
         const val ACTION_QUERY_STATE = "app.xrayt.VPN_QUERY_STATE"
+
+        const val EXTRA_RAW_CONFIG = "app.xrayt.RAW_CONFIG"
+        const val EXTRA_REPLACE_INBOUNDS = "app.xrayt.REPLACE_INBOUNDS"
+        const val EXTRA_APP_MODE = "app.xrayt.APP_MODE"
+        const val EXTRA_APPS = "app.xrayt.APPS"
+
         val running = MutableStateFlow(false)
         val lastError = MutableStateFlow<String?>(null)
         private var envReady = false
@@ -71,15 +77,36 @@ class XrayVpnService : VpnService() {
             this, 1, n,
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         )
-        Thread { startVpn() }.start()
+        Thread { startVpn(intent) }.start()
         return START_NOT_STICKY
     }
 
-    private fun startVpn() {
+    private data class VpnConfig(
+        val rawConfig: String,
+        val replaceInbounds: Boolean,
+        val mode: AppMode,
+        val apps: Set<String>
+    )
+
+    private fun resolveConfig(intent: Intent?): VpnConfig {
+        val rawFromIntent = intent?.getStringExtra(EXTRA_RAW_CONFIG)
+        if (!rawFromIntent.isNullOrBlank()) {
+            val replaceInbounds = intent.getBooleanExtra(EXTRA_REPLACE_INBOUNDS, true)
+            val modeStr = intent.getStringExtra(EXTRA_APP_MODE)
+            val mode = modeStr?.let { runCatching { AppMode.valueOf(it) }.getOrNull() } ?: AppMode.PROXY_SELECTED
+            val appsList = intent.getStringArrayListExtra(EXTRA_APPS) ?: emptyList<String>()
+            return VpnConfig(rawFromIntent, replaceInbounds, mode, appsList.toSet())
+        }
+
+        val store = Store(this)
+        val sub = store.loadSubs().firstOrNull { it.id == store.activeSub } ?: error("No subscription selected")
+        val raw = sub.configs.getOrNull(store.activeIdx) ?: error("No config selected")
+        return VpnConfig(raw, sub.replaceInbounds, store.mode, store.apps)
+    }
+
+    private fun startVpn(intent: Intent?) {
         try {
-            val store = Store(this)
-            val sub = store.loadSubs().firstOrNull { it.id == store.activeSub } ?: error("No subscription selected")
-            val raw = sub.configs.getOrNull(store.activeIdx) ?: error("No config selected")
+            val config = resolveConfig(intent)
 
             initEnv()
 
@@ -87,7 +114,7 @@ class XrayVpnService : VpnService() {
                 .addAddress("10.255.0.1", 30).addRoute("0.0.0.0", 0)
                 .addAddress("fd00:255::1", 126).addRoute("::", 0)
                 .addDnsServer("1.1.1.1").addDnsServer("8.8.8.8")
-            applyApps(b, store)
+            applyApps(b, config.mode, config.apps)
             val establishedPfd = b.establish() ?: error("VPN permission was revoked")
             pfd = establishedPfd
 
@@ -95,7 +122,7 @@ class XrayVpnService : VpnService() {
                 override fun protectFd(fd: Long): Boolean = protect(fd.toInt())
             })
 
-            val json = ConfigBuilder.build(raw, sub.replaceInbounds, establishedPfd.fd, filesDir.absolutePath)
+            val json = ConfigBuilder.build(config.rawConfig, config.replaceInbounds, establishedPfd.fd, filesDir.absolutePath)
 
             val req = JSONObject().apply {
                 put("apiVersion", LibXray.LibXrayAPIVersion)
@@ -122,9 +149,9 @@ class XrayVpnService : VpnService() {
      * Our own package is always kept OUT of the VPN, so Xray's outbound sockets (and subscription
      * updates) go directly and can't loop back into the TUN.
      */
-    private fun applyApps(b: Builder, store: Store) {
-        val sel = store.apps - packageName
-        when (store.mode) {
+    private fun applyApps(b: Builder, mode: AppMode, apps: Set<String>) {
+        val sel = apps - packageName
+        when (mode) {
             AppMode.PROXY_SELECTED -> {
                 if (sel.isEmpty()) error("Select at least one app to proxy")
                 sel.forEach { try { b.addAllowedApplication(it) } catch (_: PackageManager.NameNotFoundException) {} }

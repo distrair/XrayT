@@ -66,7 +66,21 @@ class MainActivity : ComponentActivity() {
     }
     private fun launchService() {
         XrayVpnService.lastError.value = null
-        startForegroundService(Intent(this, XrayVpnService::class.java))
+        val sub = store.loadSubs().firstOrNull { it.id == store.activeSub }
+        val raw = sub?.configs?.getOrNull(store.activeIdx)
+        if (sub == null || raw == null) {
+            val msg = "Pick a config in Subscriptions"
+            XrayVpnService.lastError.value = msg
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val intent = Intent(this, XrayVpnService::class.java).apply {
+            putExtra(XrayVpnService.EXTRA_RAW_CONFIG, raw)
+            putExtra(XrayVpnService.EXTRA_REPLACE_INBOUNDS, sub.replaceInbounds)
+            putExtra(XrayVpnService.EXTRA_APP_MODE, store.mode.name)
+            putStringArrayListExtra(XrayVpnService.EXTRA_APPS, ArrayList(store.apps))
+        }
+        startForegroundService(intent)
     }
     private fun disconnect() {
         startService(Intent(this, XrayVpnService::class.java).setAction(XrayVpnService.ACTION_STOP))
