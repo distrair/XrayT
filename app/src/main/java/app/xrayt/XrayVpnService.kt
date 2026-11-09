@@ -34,6 +34,7 @@ class XrayVpnService : VpnService() {
         val running = MutableStateFlow(false)
         val lastError = MutableStateFlow<String?>(null)
         private var envReady = false
+        private var starting = false
     }
 
     private var pfd: ParcelFileDescriptor? = null
@@ -77,7 +78,9 @@ class XrayVpnService : VpnService() {
             this, 1, n,
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         )
-        Thread { startVpn(intent) }.start()
+        if (starting) return START_NOT_STICKY
+        starting = true
+        Thread { try { startVpn(intent) } finally { starting = false } }.start()
         return START_NOT_STICKY
     }
 
