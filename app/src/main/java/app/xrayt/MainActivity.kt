@@ -562,7 +562,14 @@ fun SubDialog(s: Subscription, onDismiss: () -> Unit, onSave: (Subscription) -> 
                 }
                 if (advancedExpanded) {
                     F("x-hwid", hwid) { hwid = it }
-                    F("User-Agent", ua) { ua = it }
+                    OutlinedTextField(
+                        value = ua,
+                        onValueChange = { ua = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("User-Agent") },
+                        placeholder = { Text(Fetcher.defaultUserAgent) },
+                        singleLine = true
+                    )
                     F("Extra request headers (Name: value per line)", hdr, 3) { hdr = it }
                 }
             }
