@@ -48,7 +48,10 @@ jobs:
         id: libxray
         run: |
           mkdir -p app/libs
-          XRAY_TAG=$(curl -sSL -H "User-Agent: GitHubActions" https://api.github.com/repos/XTLS/libXray/releases/latest | grep '"tag_name":' | head -n1 | sed -E 's/.*"([^"]+)".*/\1/')
+          XRAY_TAG=$(curl -sIL https://github.com/XTLS/libXray/releases/latest | grep -i '^location:' | head -n1 | sed 's/.*\///' | tr -d '\r\n')
+          if [ -z "$XRAY_TAG" ]; then
+            XRAY_TAG=$(curl -sSL -H "User-Agent: GitHubActions" https://api.github.com/repos/XTLS/libXray/releases/latest | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
+          fi
           echo "xray_tag=${XRAY_TAG:-latest}" >> $GITHUB_OUTPUT
           echo "Bundling libXray: ${XRAY_TAG:-latest}"
 
