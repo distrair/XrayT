@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Subscriptions
@@ -410,26 +411,20 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
-    Column(Modifier.fillMaxSize()) {
-        Row(
-            Modifier.widthIn(max = 840.dp).fillMaxWidth().align(Alignment.CenterHorizontally)
-                .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+      Box(Modifier.widthIn(max = 840.dp).fillMaxHeight().fillMaxWidth()) {
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text("Your profiles", style = MaterialTheme.typography.headlineSmall)
-                Text("Manage subscriptions and choose a route", style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            FilledTonalButton(onClick = { edit = Subscription() }, shape = MaterialTheme.shapes.large) {
-                Text("Add")
-            }
-        }
-        LazyColumn(
-            modifier = Modifier.widthIn(max = 840.dp).fillMaxWidth().weight(1f).align(Alignment.CenterHorizontally),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
             items(subs, key = { it.id }) { s ->
                 Card(
                     Modifier.fillMaxWidth(),
@@ -489,6 +484,15 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                 }
             }
         }
+        }
+        FloatingActionButton(
+            onClick = { edit = Subscription() },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add subscription")
+        }
+      }
     }
     edit?.let { cur ->
         SubDialog(cur, onDismiss = { edit = null }) { n ->
