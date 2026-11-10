@@ -433,8 +433,12 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 }
                             }
                             TextButton(
-                              enabled = busy == null && pingingSub == null && s.configs.isNotEmpty() && !vpnRunning,
+                              enabled = busy == null && pingingSub == null && s.configs.isNotEmpty(),
                               onClick = {
+                                if (vpnRunning) {
+                                  Toast.makeText(ctx, "Disconnect to ping profiles", Toast.LENGTH_SHORT).show()
+                                  return@TextButton
+                                }
                                 scope.launch {
                                     pingingSub = s.id
                                     try {
@@ -515,14 +519,6 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 )
                             }
                         }
-                    }
-                    if (vpnRunning && s.configs.isNotEmpty()) {
-                        Text(
-                            "Disconnect to ping profiles",
-                            Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
             }
