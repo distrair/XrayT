@@ -36,7 +36,9 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material3.*
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -188,7 +190,7 @@ private data class NavItem(
 
 @Composable
 fun Root(store: Store, onConnect: () -> Unit, onDisconnect: () -> Unit) {
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     var subs by remember { mutableStateOf(store.loadSubs()) }
     val save: (List<Subscription>) -> Unit = { subs = it; store.saveSubs(it) }
     val navItems = remember {
@@ -198,55 +200,24 @@ fun Root(store: Store, onConnect: () -> Unit, onDisconnect: () -> Unit) {
             NavItem("Apps", Icons.Filled.Apps, Icons.Outlined.Apps)
         )
     }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        if (maxWidth >= 600.dp) {
-            Row(Modifier.fillMaxSize()) {
-                NavigationRail {
-                    navItems.forEachIndexed { i, item ->
-                        NavigationRailItem(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            icon = {
-                                Icon(
-                                    imageVector = if (tab == i) item.selectedIcon else item.unselectedIcon,
-                                    contentDescription = null
-                                )
-                            },
-                            label = { Text(item.label) },
-                            alwaysShowLabel = true
+    NavigationSuiteScaffold(
+        navigationSuiteItems = {
+            navItems.forEachIndexed { i, destination ->
+                item(
+                    selected = tab == i,
+                    onClick = { tab = i },
+                    icon = {
+                        Icon(
+                            imageVector = if (tab == i) destination.selectedIcon else destination.unselectedIcon,
+                            contentDescription = destination.label
                         )
-                    }
-                }
-                Box(Modifier.weight(1f).fillMaxHeight()) {
-                    AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
-                }
-            }
-        } else {
-            Scaffold(
-                containerColor = MaterialTheme.colorScheme.background,
-                bottomBar = {
-                    NavigationBar {
-                        navItems.forEachIndexed { i, item ->
-                            NavigationBarItem(
-                                selected = tab == i,
-                                onClick = { tab = i },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (tab == i) item.selectedIcon else item.unselectedIcon,
-                                        contentDescription = null
-                                    )
-                                },
-                                label = { Text(item.label) }
-                            )
-                        }
-                    }
-                }
-            ) { pad ->
-                Box(Modifier.padding(pad).fillMaxSize()) {
-                    AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
-                }
+                    },
+                    label = { Text(destination.label) }
+                )
             }
         }
+    ) {
+        AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
     }
 }
 
