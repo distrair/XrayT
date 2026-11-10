@@ -148,14 +148,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val XrayShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(20.dp),
-    large = RoundedCornerShape(28.dp),
-    extraLarge = RoundedCornerShape(36.dp)
-)
-
 @Composable
 fun XrayTTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -168,7 +160,7 @@ fun XrayTTheme(
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> darkColorScheme()
-        else -> lightColorScheme()
+        else -> expressiveLightColorScheme()
     }
 
     val view = LocalView.current
@@ -186,9 +178,8 @@ fun XrayTTheme(
         }
     }
 
-    MaterialTheme(
+    MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        shapes = XrayShapes,
         content = content
     )
 }
@@ -280,6 +271,7 @@ private fun AppPageContent(
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, onDisconnect: () -> Unit) {
     val running by XrayVpnService.running.collectAsState()
     val err by XrayVpnService.lastError.collectAsState()
@@ -386,7 +378,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                         }
                     }) {
                         if (geoBusy) {
-                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            LoadingIndicator(modifier = Modifier.size(24.dp))
                         } else {
                             Text("Update")
                         }
@@ -407,6 +399,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -> Unit) {
     var edit by remember { mutableStateOf<Subscription?>(null) }
     var pendingDelete by remember { mutableStateOf<Subscription?>(null) }
@@ -459,7 +452,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 }
                             }) {
                                 if (busy == s.id) {
-                                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                                    LoadingIndicator(modifier = Modifier.size(24.dp))
                                 } else {
                                     Text("Update")
                                 }
