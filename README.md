@@ -22,6 +22,13 @@ some features are
 Launcher icon: Xray-core logo by XTLS, sourced from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Xray-core_icon.png); licensed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
 
 note to self, this is how you compile the release project you fucking dumbass: `./gradlew clean assembleRelease`
+another note to dumbass self for updating if there's a core update 
+pc:
+```
+rtk git tag v3.1.2 HEAD
+rtk git push origin v3.1.2
+```
+web: create a draft release -> create a tag with new version -> target to main -> publish release | workflow will start automatically
 
 ## signing for releases
 
