@@ -23,9 +23,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -42,7 +41,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -481,23 +479,27 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        s.configs.forEachIndexed { i, c ->
-                            val selected = activeSub == s.id && activeIdx == i
-                            Surface(
-                                modifier = Modifier.fillMaxWidth().selectable(
+                        Column(verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)) {
+                            s.configs.forEachIndexed { i, c ->
+                                val selected = activeSub == s.id && activeIdx == i
+                                SegmentedListItem(
                                     selected = selected,
-                                    role = Role.RadioButton,
-                                    onClick = { activeSub = s.id; activeIdx = i; store.activeSub = s.id; store.activeIdx = i }
-                                ),
-                                shape = MaterialTheme.shapes.medium,
-                                color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
-                            ) {
-                                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(selected = selected, onClick = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(configName(c), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,
-                                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                }
+                                    onClick = {
+                                        activeSub = s.id
+                                        activeIdx = i
+                                        store.activeSub = s.id
+                                        store.activeIdx = i
+                                    },
+                                    shapes = ListItemDefaults.segmentedShapes(index = i, count = s.configs.size),
+                                    leadingContent = { RadioButton(selected = selected, onClick = null) },
+                                    content = {
+                                        Text(
+                                            configName(c),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
                             }
                         }
                     }
@@ -637,22 +639,24 @@ fun AppsTab(store: Store) {
         )
         OutlinedTextField(q, { q = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge, singleLine = true)
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp)) {
-            items(apps.filter { it.label.contains(q, true) || it.pkg.contains(q, true) }, key = { it.pkg }) { a ->
+        val visibleApps = apps.filter { it.label.contains(q, true) || it.pkg.contains(q, true) }
+        LazyColumn(
+            Modifier.weight(1f),
+            contentPadding = PaddingValues(vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(ListItemDefaults.SegmentedGap)
+        ) {
+            itemsIndexed(visibleApps, key = { _, app -> app.pkg }) { index, a ->
                 val checked = a.pkg in sel
-                ListItem(
-                    headlineContent = { Text(a.label) },
-                    supportingContent = { Text(a.pkg, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                SegmentedListItem(
+                    checked = checked,
+                    onCheckedChange = {
+                        sel = if (it) sel + a.pkg else sel - a.pkg
+                        store.apps = sel
+                    },
+                    shapes = ListItemDefaults.segmentedShapes(index = index, count = visibleApps.size),
                     leadingContent = { Checkbox(checked, null) },
-                    modifier = Modifier.toggleable(
-                        value = checked,
-                        role = Role.Checkbox,
-                        onValueChange = {
-                            sel = if (it) sel + a.pkg else sel - a.pkg
-                            store.apps = sel
-                        }
-                    ),
-                    colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.background)
+                    supportingContent = { Text(a.pkg, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    content = { Text(a.label) }
                 )
             }
         }
