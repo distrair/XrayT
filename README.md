@@ -1,6 +1,6 @@
 # XrayT – Xray-core Android client (core TUN only)
 > [!CAUTION]
-> # **THIS IS EXTREMLY VIBE CODED, USE AT YOUR RISK, I DO NOT KNOW WHAT THE FUCK DID CLAUDE AND GEMINI WROTE HERE, IT WORKS FOR ME, IT MIGHT BE NOT FOR YOU**
+> # **THIS IS EXTREMLY VIBE CODED, USE AT YOUR RISK, I DO NOT KNOW WHAT THE FUCK DID CLAUDE, GEMINI AND CHATGPU WROTE HERE, IT WORKS FOR ME, IT MIGHT BE NOT FOR YOU**
 the xray core used here is from https://github.com/XTLS/libXray/
 1. install that `jdk17-openjdk gradle` idk what it will be on your system i compiled it on arch **btw**
 2. then do `archlinux-java set java-17-openjdk`
