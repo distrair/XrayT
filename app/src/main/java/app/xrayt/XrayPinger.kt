@@ -20,7 +20,11 @@ object XrayPinger {
                 put("payload", JSONObject().apply {
                     put("configs", JSONArray().apply {
                         batch.forEach { raw ->
-                            put(JSONObject().put("xrayJson", raw))
+                            val pingConfig = runCatching {
+                                val config = JSONObject(raw)
+                                JSONObject().put("outbounds", config.getJSONArray("outbounds")).toString()
+                            }.getOrElse { raw }
+                            put(JSONObject().put("xrayJson", pingConfig))
                         }
                     })
                     put("timeout", TIMEOUT_SECONDS)
