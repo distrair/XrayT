@@ -29,8 +29,8 @@ val hasReleaseSigning = !releaseStoreFile.isNullOrBlank()
 
 android {
     namespace = "app.xrayt"
-    compileSdk = 35
-    buildToolsVersion = "35.0.0"
+    compileSdk = 37
+    buildToolsVersion = "36.0.0"
 
     val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 1
     val vName = (project.findProperty("appVersionName") as? String) ?: "1.0"
