@@ -23,7 +23,7 @@ object XrayPinger {
                             val pingConfig = runCatching {
                                 val config = JSONObject(raw)
                                 JSONObject().put("outbounds", config.getJSONArray("outbounds")).toString()
-                            }.getOrElse { raw }
+                            }.getOrElse { "{}" }
                             put(JSONObject().put("xrayJson", pingConfig))
                         }
                     })
