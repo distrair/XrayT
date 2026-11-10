@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -232,8 +233,9 @@ private fun AppPageContent(
     onConnect: () -> Unit,
     onDisconnect: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     when (tab) {
-        0 -> ConnectTab(store, subs, onConnect, onDisconnect)
+        0 -> ConnectTab(store, subs, onConnect, onDisconnect, scope)
         1 -> SubsTab(store, subs, save)
         else -> AppsTab(store)
     }
@@ -241,11 +243,10 @@ private fun AppPageContent(
 
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, onDisconnect: () -> Unit) {
+fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, onDisconnect: () -> Unit, scope: CoroutineScope) {
     val running by XrayVpnService.running.collectAsState()
     val err by XrayVpnService.lastError.collectAsState()
     val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
     var geoAuto by remember { mutableStateOf(store.geoAuto) }
     var geoTs by remember { mutableLongStateOf(store.geoUpdated) }
     var geoBusy by remember { mutableStateOf(false) }
