@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -31,6 +32,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Subscriptions
@@ -38,6 +42,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Subscriptions
 import androidx.compose.material3.*
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,8 +51,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.Dispatchers
@@ -377,7 +386,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
     var pendingDelete by remember { mutableStateOf<Subscription?>(null) }
     var importUriDialog by rememberSaveable { mutableStateOf(false) }
     var importUriText by rememberSaveable { mutableStateOf("") }
-    var addMenuExpanded by remember { mutableStateOf(false) }
+    var addMenuExpanded by rememberSaveable { mutableStateOf(false) }
     var activeSub by remember { mutableStateOf(store.activeSub) }
     var activeIdx by remember { mutableIntStateOf(store.activeIdx) }
     var busy by remember { mutableStateOf<String?>(null) }
@@ -559,34 +568,63 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
             }
         }
         }
-        Box(Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
-            FloatingActionButton(
-                onClick = { addMenuExpanded = true },
-                shape = MaterialTheme.shapes.large
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add subscription or import profiles")
-            }
-            DropdownMenu(
-                expanded = addMenuExpanded,
-                onDismissRequest = { addMenuExpanded = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Add subscription") },
-                    onClick = { addMenuExpanded = false; edit = Subscription() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Import Xray URI") },
-                    onClick = {
-                        addMenuExpanded = false
-                        importUriText = ""
-                        importUriDialog = true
+        BackHandler(addMenuExpanded) { addMenuExpanded = false }
+        FloatingActionButtonMenu(
+            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+            expanded = addMenuExpanded,
+            button = {
+                TooltipBox(
+                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                        if (addMenuExpanded) TooltipAnchorPosition.Start else TooltipAnchorPosition.Above
+                    ),
+                    tooltip = {
+                        PlainTooltip {
+                            Text(if (addMenuExpanded) "Close profile actions" else "Add or import profiles")
+                        }
+                    },
+                    state = rememberTooltipState()
+                ) {
+                    ToggleFloatingActionButton(
+                        modifier = Modifier.semantics {
+                            contentDescription = "Profile actions"
+                            stateDescription = if (addMenuExpanded) "Expanded" else "Collapsed"
+                        },
+                        checked = addMenuExpanded,
+                        onCheckedChange = { addMenuExpanded = it }
+                    ) {
+                        val imageVector by remember {
+                            derivedStateOf {
+                                if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.Add
+                            }
+                        }
+                        Icon(
+                            painter = rememberVectorPainter(imageVector),
+                            contentDescription = null,
+                            modifier = Modifier.animateIcon { checkedProgress }
+                        )
                     }
-                )
-                DropdownMenuItem(
-                    text = { Text("Import JSON file") },
-                    onClick = { addMenuExpanded = false; jsonPicker.launch(arrayOf("*/*")) }
-                )
+                }
             }
+        ) {
+            FloatingActionButtonMenuItem(
+                onClick = { addMenuExpanded = false; edit = Subscription() },
+                icon = { Icon(Icons.Filled.Subscriptions, contentDescription = null) },
+                text = { Text("Add subscription") }
+            )
+            FloatingActionButtonMenuItem(
+                onClick = {
+                    addMenuExpanded = false
+                    importUriText = ""
+                    importUriDialog = true
+                },
+                icon = { Icon(Icons.Filled.Link, contentDescription = null) },
+                text = { Text("Import Xray URI") }
+            )
+            FloatingActionButtonMenuItem(
+                onClick = { addMenuExpanded = false; jsonPicker.launch(arrayOf("*/*")) },
+                icon = { Icon(Icons.Filled.FolderOpen, contentDescription = null) },
+                text = { Text("Import JSON file") }
+            )
         }
       }
     }
