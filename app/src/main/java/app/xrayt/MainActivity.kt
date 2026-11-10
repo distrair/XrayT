@@ -409,6 +409,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 @Composable
 fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -> Unit) {
     var edit by remember { mutableStateOf<Subscription?>(null) }
+    var pendingDelete by remember { mutableStateOf<Subscription?>(null) }
     var activeSub by remember { mutableStateOf(store.activeSub) }
     var activeIdx by remember { mutableIntStateOf(store.activeIdx) }
     var busy by remember { mutableStateOf<String?>(null) }
@@ -477,7 +478,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     )
                                     DropdownMenuItem(
                                         text = { Text("Delete") },
-                                        onClick = { menuExpanded = false; save(subs.filter { it.id != s.id }) }
+                                        onClick = { menuExpanded = false; pendingDelete = s }
                                     )
                                 }
                             }
@@ -525,6 +526,22 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
             save(if (subs.any { it.id == n.id }) subs.map { if (it.id == n.id) n else it } else subs + n)
             edit = null
         }
+    }
+    pendingDelete?.let { sub ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("Delete subscription?") },
+            text = { Text("${sub.name.ifBlank { sub.url }} and its profiles will be removed.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    save(subs.filter { it.id != sub.id })
+                    pendingDelete = null
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) { Text("Cancel") }
+            }
+        )
     }
 }
 
