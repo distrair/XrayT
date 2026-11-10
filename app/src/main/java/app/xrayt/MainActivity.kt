@@ -217,7 +217,9 @@ fun Root(store: Store, onConnect: () -> Unit, onDisconnect: () -> Unit) {
             }
         }
     ) {
-        AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
+        Box(Modifier.fillMaxSize().statusBarsPadding()) {
+            AppPageContent(tab, store, subs, save, onConnect, onDisconnect)
+        }
     }
 }
 
