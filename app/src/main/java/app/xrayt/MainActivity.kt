@@ -375,6 +375,9 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
     var activeSub by remember { mutableStateOf(store.activeSub) }
     var activeIdx by remember { mutableIntStateOf(store.activeIdx) }
     var busy by remember { mutableStateOf<String?>(null) }
+    var pingingSub by remember { mutableStateOf<String?>(null) }
+    var pingResults by remember { mutableStateOf<Map<String, List<ProfilePing>>>(emptyMap()) }
+    val vpnRunning by XrayVpnService.running.collectAsState()
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
 
@@ -408,12 +411,15 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            TextButton(onClick = {
+                            TextButton(
+                              enabled = busy == null && pingingSub == null,
+                              onClick = {
                                 scope.launch {
                                     busy = s.id
                                     try {
                                         val c = withContext(Dispatchers.IO) { Fetcher.fetch(s) }
                                         save(subs.map { if (it.id == s.id) it.copy(configs = c, updatedAt = System.currentTimeMillis()) else it })
+                                        pingResults = pingResults - s.id
                                     } catch (e: Exception) {
                                         Toast.makeText(ctx, e.message ?: "Update failed", Toast.LENGTH_LONG).show()
                                     }
@@ -424,6 +430,28 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     LoadingIndicator(modifier = Modifier.size(24.dp))
                                 } else {
                                     Text("Update")
+                                }
+                            }
+                            TextButton(
+                              enabled = busy == null && pingingSub == null && s.configs.isNotEmpty() && !vpnRunning,
+                              onClick = {
+                                scope.launch {
+                                    pingingSub = s.id
+                                    try {
+                                        val results = withContext(Dispatchers.IO) { XrayPinger.ping(s.configs) }
+                                        pingResults = pingResults + (s.id to results)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(ctx, e.message ?: "Ping failed", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        pingingSub = null
+                                    }
+                                }
+                              }
+                            ) {
+                                if (pingingSub == s.id) {
+                                    LoadingIndicator(modifier = Modifier.size(24.dp))
+                                } else {
+                                    Text("Ping")
                                 }
                             }
                             Box {
@@ -464,15 +492,37 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     shapes = ListItemDefaults.segmentedShapes(index = i, count = s.configs.size),
                                     leadingContent = { RadioButton(selected = selected, onClick = null) },
                                     content = {
-                                        Text(
-                                            configName(c),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                configName(c),
+                                                Modifier.weight(1f),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            pingResults[s.id]?.getOrNull(i)?.let { ping ->
+                                                val label = ping.delayMs?.let { "$it ms" }
+                                                    ?: if (ping.timedOut) "Timeout" else "Failed"
+                                                Text(
+                                                    label,
+                                                    Modifier.padding(start = 12.dp),
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = if (ping.delayMs != null) MaterialTheme.colorScheme.primary
+                                                        else MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
                                     }
                                 )
                             }
                         }
+                    }
+                    if (vpnRunning && s.configs.isNotEmpty()) {
+                        Text(
+                            "Disconnect to ping profiles",
+                            Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
