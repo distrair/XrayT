@@ -14,6 +14,7 @@ some features are
 - hwid support (just type some random bullshit in the text field)
 - **removes `inbounds` if imported subsctiption has it (useful if you use russian apps that scans for localhost open ports)**
 - **tunnel only, it does not have hev-socks5 and it will not have it why the fuck you should use it on android xray literally has tun support you dumbfuck**
+- imported inbounds are replaced with one TUN inbound; routing rules scoped to removed inbound tags are not rewritten and may no longer match, so review those rules when importing custom configs
 - per app split tunneling
 - autoupdating .dat files
 - pure kotlin (you can verify it by looking at the right part of your lcd or oled or crt screen)
