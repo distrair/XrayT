@@ -510,10 +510,12 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                     expanded = menuExpanded,
                                     onDismissRequest = { menuExpanded = false }
                                 ) {
-                                    DropdownMenuItem(
-                                        text = { Text("Edit") },
-                                        onClick = { menuExpanded = false; edit = s }
-                                    )
+                                    if (s.url.isNotBlank() || s.configs.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = { Text("Edit") },
+                                            onClick = { menuExpanded = false; edit = s }
+                                        )
+                                    }
                                     DropdownMenuItem(
                                         text = { Text("Delete") },
                                         onClick = { menuExpanded = false; pendingDelete = s }
