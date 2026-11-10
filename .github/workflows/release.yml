@@ -24,16 +24,22 @@ jobs:
 
       - name: Compute App Version
         id: version
+        env:
+          RELEASE_TAG: ${{ inputs.tag_name }}
         run: |
-          if [ -n "${{ inputs.tag_name }}" ]; then
-            TAG="${{ inputs.tag_name }}"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          if [ -n "$RELEASE_TAG" ]; then
+            TAG="$RELEASE_TAG"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
             TAG="${GITHUB_REF#refs/tags/}"
           else
-            TAG="v1.0.${{ github.run_number }}"
+            TAG="v1.0.${GITHUB_RUN_NUMBER}"
+          fi
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use vMAJOR.MINOR.PATCH format."
+            exit 1
           fi
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "Building with Version Name: ${TAG}, Version Code: ${{ github.run_number }}"
+          echo "Building with Version Name: ${TAG}, Version Code: ${GITHUB_RUN_NUMBER}"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -79,14 +85,18 @@ jobs:
 
       - name: Build Release APK
         env:
+          APP_VERSION_NAME: ${{ steps.version.outputs.tag }}
+          APP_VERSION_CODE: ${{ github.run_number }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease -PappVersionCode=${{ github.run_number }} -PappVersionName=${{ steps.version.outputs.tag }}
+        run: ./gradlew assembleRelease -PappVersionCode="$APP_VERSION_CODE" -PappVersionName="$APP_VERSION_NAME"
 
       - name: Prepare APK for Release
+        env:
+          APP_VERSION_NAME: ${{ steps.version.outputs.tag }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk XrayT-${{ steps.version.outputs.tag }}.apk
+          cp app/build/outputs/apk/release/app-release.apk "XrayT-${APP_VERSION_NAME}.apk"
           ls -lh XrayT-*.apk
 
       - name: Upload APK Artifact
