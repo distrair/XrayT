@@ -380,7 +380,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -> Unit) {
     var edit by remember { mutableStateOf<Subscription?>(null) }
     var pendingDelete by remember { mutableStateOf<Subscription?>(null) }
@@ -600,7 +600,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                         Icon(
                             painter = rememberVectorPainter(imageVector),
                             contentDescription = null,
-                            modifier = Modifier.animateIcon { checkedProgress }
+                            modifier = Modifier.animateIcon(checkedProgress = checkedProgress)
                         )
                     }
                 }
