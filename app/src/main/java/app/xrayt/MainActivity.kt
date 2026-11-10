@@ -17,8 +17,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -283,12 +281,12 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
     val profileName = config?.let(::configName) ?: "No profile selected"
     val buttonContainer by animateColorAsState(
         targetValue = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "connectionButtonContainer"
     )
     val buttonContent by animateColorAsState(
         targetValue = if (running) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
         label = "connectionButtonContent"
     )
 
