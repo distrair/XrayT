@@ -31,11 +31,13 @@ object Fetcher {
     fun parse(body: String): List<String> {
         var text = body.trim().removePrefix("\uFEFF").trim()
         if (!isJson(text) && !isShareLinkList(text)) {
-            val decoded = runCatching {
-                String(Base64.decode(text, Base64.DEFAULT), Charsets.UTF_8)
-                    .trim().removePrefix("\uFEFF").trim()
-            }.getOrNull()
-            if (!decoded.isNullOrBlank()) text = decoded
+            val decoded = listOf(Base64.DEFAULT, Base64.URL_SAFE).firstNotNullOfOrNull { flags ->
+                runCatching {
+                    String(Base64.decode(text, flags), Charsets.UTF_8)
+                        .trim().removePrefix("\uFEFF").trim()
+                }.getOrNull()?.takeIf { isJson(it) || isShareLinkList(it) }
+            }
+            if (decoded != null) text = decoded
         }
 
         return when {
