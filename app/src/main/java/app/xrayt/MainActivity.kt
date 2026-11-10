@@ -11,10 +11,12 @@ import android.net.NetworkCapabilities
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -373,6 +375,9 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -> Unit) {
     var edit by remember { mutableStateOf<Subscription?>(null) }
     var pendingDelete by remember { mutableStateOf<Subscription?>(null) }
+    var importUriDialog by rememberSaveable { mutableStateOf(false) }
+    var importUriText by rememberSaveable { mutableStateOf("") }
+    var addMenuExpanded by remember { mutableStateOf(false) }
     var activeSub by remember { mutableStateOf(store.activeSub) }
     var activeIdx by remember { mutableIntStateOf(store.activeIdx) }
     var busy by remember { mutableStateOf<String?>(null) }
@@ -381,6 +386,35 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
     val vpnRunning by XrayVpnService.running.collectAsState()
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
+    val jsonPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val (fileName, body) = withContext(Dispatchers.IO) {
+                        val name = ctx.contentResolver.query(
+                            uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
+                        )?.use { cursor ->
+                            if (cursor.moveToFirst()) cursor.getString(0) else null
+                        } ?: uri.lastPathSegment.orEmpty()
+                        val text = ctx.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)
+                            ?.use { it.readText() } ?: error("Could not read the selected file")
+                        name to text
+                    }
+                    val configs = withContext(Dispatchers.IO) { Fetcher.parse(body) }
+                    check(configs.isNotEmpty()) { "No supported profiles found" }
+                    val name = fileName.substringBeforeLast('.', fileName).ifBlank { "Imported JSON" }
+                    save(subs + Subscription(
+                        name = name,
+                        configs = configs,
+                        updatedAt = System.currentTimeMillis()
+                    ))
+                    Toast.makeText(ctx, "Imported ${configs.size} profile(s)", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(ctx, e.message ?: "Could not import JSON file", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
       Box(Modifier.widthIn(max = 840.dp).fillMaxHeight().fillMaxWidth()) {
@@ -406,13 +440,13 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                s.name.ifBlank { s.url },
+                                s.name.ifBlank { s.url.ifBlank { "Imported profiles" } },
                                 Modifier.weight(1f),
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            TextButton(
+                            if (s.url.isNotBlank()) TextButton(
                               enabled = busy == null && pingingSub == null,
                               onClick = {
                                 scope.launch {
@@ -478,7 +512,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 }
                             }
                         }
-                        if (s.configs.isEmpty()) {
+                        if (s.url.isNotBlank() && s.configs.isEmpty()) {
                             Text("No profiles yet. Update this subscription to fetch them.",
                                 Modifier.padding(vertical = 4.dp), style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -525,12 +559,34 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
             }
         }
         }
-        FloatingActionButton(
-            onClick = { edit = Subscription() },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
-            shape = MaterialTheme.shapes.large
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add subscription")
+        Box(Modifier.align(Alignment.BottomEnd).padding(20.dp)) {
+            FloatingActionButton(
+                onClick = { addMenuExpanded = true },
+                shape = MaterialTheme.shapes.large
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = "Add subscription or import profiles")
+            }
+            DropdownMenu(
+                expanded = addMenuExpanded,
+                onDismissRequest = { addMenuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Add subscription") },
+                    onClick = { addMenuExpanded = false; edit = Subscription() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Import Xray URI") },
+                    onClick = {
+                        addMenuExpanded = false
+                        importUriText = ""
+                        importUriDialog = true
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Import JSON file") },
+                    onClick = { addMenuExpanded = false; jsonPicker.launch(arrayOf("*/*")) }
+                )
+            }
         }
       }
     }
@@ -540,11 +596,62 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
             edit = null
         }
     }
+    if (importUriDialog) {
+        AlertDialog(
+            onDismissRequest = { importUriDialog = false },
+            title = { Text("Import Xray URI") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = importUriText,
+                        onValueChange = { importUriText = it },
+                        label = { Text("URI") },
+                        placeholder = { Text("vless://…") },
+                        supportingText = { Text("Enter one Xray-compatible URI") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = importUriText.isNotBlank(),
+                    onClick = {
+                        val value = importUriText.trim()
+                        scope.launch {
+                            try {
+                                check(value.contains("://") && !value.contains(Regex("\\s"))) {
+                                    "Enter one Xray-compatible URI"
+                                }
+                                val config = withContext(Dispatchers.IO) {
+                                    Fetcher.parse(value).singleOrNull()
+                                        ?: error("URI must contain exactly one supported profile")
+                                }
+                                val name = configName(config).takeUnless { it == "Config" } ?: "Imported URI"
+                                save(subs + Subscription(
+                                    name = name,
+                                    configs = listOf(config),
+                                    updatedAt = System.currentTimeMillis()
+                                ))
+                                importUriDialog = false
+                                Toast.makeText(ctx, "URI imported", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, e.message ?: "Could not import URI", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                ) { Text("Import") }
+            },
+            dismissButton = {
+                TextButton(onClick = { importUriDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
     pendingDelete?.let { sub ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Delete subscription?") },
-            text = { Text("${sub.name.ifBlank { sub.url }} and its profiles will be removed.") },
+            text = { Text("${sub.name.ifBlank { sub.url.ifBlank { "Imported profiles" } }} and its profiles will be removed.") },
             confirmButton = {
                 TextButton(onClick = {
                     save(subs.filter { it.id != sub.id })
