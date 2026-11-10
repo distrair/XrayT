@@ -600,7 +600,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                         Icon(
                             painter = rememberVectorPainter(imageVector),
                             contentDescription = null,
-                            modifier = Modifier.animateIcon(checkedProgress = checkedProgress)
+                            modifier = Modifier.animateIcon(checkedProgress = { checkedProgress })
                         )
                     }
                 }
