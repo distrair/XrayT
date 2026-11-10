@@ -19,6 +19,7 @@ import libXray.DialerController
 import libXray.LibXray
 import org.json.JSONObject
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class XrayVpnService : VpnService() {
     companion object {
@@ -33,7 +34,7 @@ class XrayVpnService : VpnService() {
         val running = MutableStateFlow(false)
         val lastError = MutableStateFlow<String?>(null)
         private var envReady = false
-        private var starting = false
+        private val starting = AtomicBoolean(false)
     }
 
     private var pfd: ParcelFileDescriptor? = null
@@ -77,9 +78,8 @@ class XrayVpnService : VpnService() {
             this, 1, n,
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         )
-        if (starting) return START_NOT_STICKY
-        starting = true
-        Thread { try { startVpn(intent) } finally { starting = false } }.start()
+        if (!starting.compareAndSet(false, true)) return START_NOT_STICKY
+        Thread { try { startVpn(intent) } finally { starting.set(false) } }.start()
         return START_NOT_STICKY
     }
 
