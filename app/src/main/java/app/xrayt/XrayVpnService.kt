@@ -154,7 +154,14 @@ class XrayVpnService : VpnService() {
         when (mode) {
             AppMode.PROXY_SELECTED -> {
                 if (sel.isEmpty()) error("Select at least one app to proxy")
-                sel.forEach { try { b.addAllowedApplication(it) } catch (_: PackageManager.NameNotFoundException) {} }
+                var added = 0
+                sel.forEach {
+                    try {
+                        b.addAllowedApplication(it)
+                        added++
+                    } catch (_: PackageManager.NameNotFoundException) {}
+                }
+                if (added == 0) error("None of the selected apps are installed. Select an installed app to proxy.")
             }
             AppMode.BYPASS_SELECTED -> {
                 (sel + packageName).forEach {
