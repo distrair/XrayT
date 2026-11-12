@@ -75,16 +75,26 @@ class MainActivity : ComponentActivity() {
     }
     private val notifPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) { requestVpn() }
 
+    private fun ensureProxyAppSelection(): Boolean {
+        if (store.mode != AppMode.PROXY_SELECTED || (store.apps - packageName).isNotEmpty()) return true
+        XrayVpnService.lastError.value = null
+        Toast.makeText(this, "Select at least one app to proxy", Toast.LENGTH_SHORT).show()
+        return false
+    }
+
     private fun connect() {
+        if (!ensureProxyAppSelection()) return
         if (Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) notifPerm.launch(Manifest.permission.POST_NOTIFICATIONS) else requestVpn()
     }
     private fun requestVpn() {
+        if (!ensureProxyAppSelection()) return
         val i = VpnService.prepare(this)
         if (i != null) vpnPerm.launch(i) else launchService()
     }
     private fun launchService() {
+        if (!ensureProxyAppSelection()) return
         XrayVpnService.lastError.value = null
         val sub = store.loadSubs().firstOrNull { it.id == store.activeSub }
         val raw = sub?.configs?.getOrNull(store.activeIdx)
