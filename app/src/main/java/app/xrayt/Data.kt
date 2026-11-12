@@ -47,7 +47,8 @@ class Store(ctx: Context) {
         sp.edit().putString("subs", JSONArray(l.map { it.toJson() }).toString()).apply()
 
     var mode: AppMode
-        get() = AppMode.valueOf(sp.getString("mode", AppMode.PROXY_SELECTED.name)!!)
+        get() = runCatching { AppMode.valueOf(sp.getString("mode", AppMode.BYPASS_SELECTED.name)!!) }
+            .getOrDefault(AppMode.BYPASS_SELECTED)
         set(v) = sp.edit().putString("mode", v.name).apply()
     var apps: Set<String>
         get() = sp.getStringSet("apps", emptySet())!!.toSet()

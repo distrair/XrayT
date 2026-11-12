@@ -97,7 +97,7 @@ class XrayVpnService : VpnService() {
         val rawFromIntent = intent?.getStringExtra(EXTRA_RAW_CONFIG)
         if (!rawFromIntent.isNullOrBlank()) {
             val modeStr = intent.getStringExtra(EXTRA_APP_MODE)
-            val mode = modeStr?.let { runCatching { AppMode.valueOf(it) }.getOrNull() } ?: AppMode.PROXY_SELECTED
+            val mode = modeStr?.let { runCatching { AppMode.valueOf(it) }.getOrNull() } ?: AppMode.BYPASS_SELECTED
             val appsList = intent.getStringArrayListExtra(EXTRA_APPS) ?: emptyList<String>()
             return VpnConfig(rawFromIntent, mode, appsList.toSet())
         }
