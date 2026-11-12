@@ -322,11 +322,6 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(if (running) "Connected" else "Ready when you are", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Per-app routing settings apply next time you connect",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
@@ -799,6 +794,12 @@ fun AppsTab(store: Store) {
                 AppMode.BYPASS_SELECTED -> "Selected apps bypass Xray; other apps use it."
             },
             Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Per-app routing settings apply next time you connect",
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
