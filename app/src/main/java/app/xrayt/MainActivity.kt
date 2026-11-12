@@ -285,10 +285,13 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
         label = "connectionButtonContent"
     )
 
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val compactHeight = maxHeight < 680.dp
         Column(
-            Modifier.widthIn(max = 640.dp).fillMaxHeight().fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            Modifier.widthIn(max = 640.dp).fillMaxHeight().fillMaxWidth()
+                .then(if (compactHeight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .padding(horizontal = 20.dp, vertical = if (compactHeight) 8.dp else 16.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compactHeight) 10.dp else 16.dp)
         ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(profileName, style = MaterialTheme.typography.headlineSmallEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -310,15 +313,21 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
             }
         }
 
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.then(
+                if (compactHeight) Modifier.fillMaxWidth().height(252.dp)
+                else Modifier.weight(1f).fillMaxWidth()
+            ),
+            contentAlignment = Alignment.Center
+        ) {
             Column(
-                modifier = Modifier.offset(y = 16.dp),
+                modifier = Modifier.offset(y = if (compactHeight) 0.dp else 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(if (compactHeight) 12.dp else 20.dp)
             ) {
                 Button(
                     onClick = { if (running) onDisconnect() else onConnect() },
-                    modifier = Modifier.size(200.dp),
+                    modifier = Modifier.size(if (compactHeight) 192.dp else 200.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = buttonContainer,
@@ -451,7 +460,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                     shape = MaterialTheme.shapes.large,
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 s.name.ifBlank { s.url.ifBlank { "Imported profiles" } },
@@ -460,53 +469,6 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            if (s.url.isNotBlank()) TextButton(
-                              enabled = busy == null && pingingSub == null,
-                              onClick = {
-                                scope.launch {
-                                    busy = s.id
-                                    try {
-                                        val c = withContext(Dispatchers.IO) { Fetcher.fetch(s) }
-                                        save(subs.map { if (it.id == s.id) it.copy(configs = c, updatedAt = System.currentTimeMillis()) else it })
-                                        pingResults = pingResults - s.id
-                                    } catch (e: Exception) {
-                                        Toast.makeText(ctx, e.message ?: "Update failed", Toast.LENGTH_LONG).show()
-                                    }
-                                    busy = null
-                                }
-                            }) {
-                                if (busy == s.id) {
-                                    LoadingIndicator(modifier = Modifier.size(24.dp))
-                                } else {
-                                    Text("Update")
-                                }
-                            }
-                            TextButton(
-                              enabled = busy == null && pingingSub == null && s.configs.isNotEmpty(),
-                              onClick = {
-                                if (vpnRunning) {
-                                  Toast.makeText(ctx, "Disconnect to ping profiles", Toast.LENGTH_SHORT).show()
-                                  return@TextButton
-                                }
-                                scope.launch {
-                                    pingingSub = s.id
-                                    try {
-                                        val results = withContext(Dispatchers.IO) { XrayPinger.ping(s.configs) }
-                                        pingResults = pingResults + (s.id to results)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(ctx, e.message ?: "Ping failed", Toast.LENGTH_LONG).show()
-                                    } finally {
-                                        pingingSub = null
-                                    }
-                                }
-                              }
-                            ) {
-                                if (pingingSub == s.id) {
-                                    LoadingIndicator(modifier = Modifier.size(24.dp))
-                                } else {
-                                    Text("Ping")
-                                }
-                            }
                             Box {
                                 IconButton(onClick = { menuExpanded = true }) {
                                     Icon(Icons.Filled.MoreVert, contentDescription = "Subscription actions")
@@ -525,6 +487,60 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                         text = { Text("Delete") },
                                         onClick = { menuExpanded = false; pendingDelete = s }
                                     )
+                                }
+                            }
+                        }
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (s.url.isNotBlank()) TextButton(
+                                enabled = busy == null && pingingSub == null,
+                                onClick = {
+                                    scope.launch {
+                                        busy = s.id
+                                        try {
+                                            val c = withContext(Dispatchers.IO) { Fetcher.fetch(s) }
+                                            save(subs.map { if (it.id == s.id) it.copy(configs = c, updatedAt = System.currentTimeMillis()) else it })
+                                            pingResults = pingResults - s.id
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, e.message ?: "Update failed", Toast.LENGTH_LONG).show()
+                                        }
+                                        busy = null
+                                    }
+                                }
+                            ) {
+                                if (busy == s.id) {
+                                    LoadingIndicator(modifier = Modifier.size(24.dp))
+                                } else {
+                                    Text("Update")
+                                }
+                            }
+                            TextButton(
+                                enabled = busy == null && pingingSub == null && s.configs.isNotEmpty(),
+                                onClick = {
+                                    if (vpnRunning) {
+                                        Toast.makeText(ctx, "Disconnect to ping profiles", Toast.LENGTH_SHORT).show()
+                                        return@TextButton
+                                    }
+                                    scope.launch {
+                                        pingingSub = s.id
+                                        try {
+                                            val results = withContext(Dispatchers.IO) { XrayPinger.ping(s.configs) }
+                                            pingResults = pingResults + (s.id to results)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(ctx, e.message ?: "Ping failed", Toast.LENGTH_LONG).show()
+                                        } finally {
+                                            pingingSub = null
+                                        }
+                                    }
+                                }
+                            ) {
+                                if (pingingSub == s.id) {
+                                    LoadingIndicator(modifier = Modifier.size(24.dp))
+                                } else {
+                                    Text("Ping")
                                 }
                             }
                         }
