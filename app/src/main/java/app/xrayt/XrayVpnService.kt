@@ -35,8 +35,11 @@ class XrayVpnService : VpnService() {
         val lastError = MutableStateFlow<String?>(null)
         private var envReady = false
         private val starting = AtomicBoolean(false)
+        private val stopRequested = AtomicBoolean(false)
     }
 
+    private val lifecycleLock = Any()
+    private val xrayLock = Any()
     private var pfd: ParcelFileDescriptor? = null
 
     private val queryReceiver = object : BroadcastReceiver() {
@@ -79,6 +82,7 @@ class XrayVpnService : VpnService() {
             if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
         )
         if (!starting.compareAndSet(false, true)) return START_NOT_STICKY
+        synchronized(lifecycleLock) { stopRequested.set(false) }
         Thread { try { startVpn(intent) } finally { starting.set(false) } }.start()
         return START_NOT_STICKY
     }
@@ -106,9 +110,12 @@ class XrayVpnService : VpnService() {
 
     private fun startVpn(intent: Intent?) {
         try {
+            if (stopRequested.get()) return
             val config = resolveConfig(intent)
+            if (stopRequested.get()) return
 
             initEnv()
+            if (stopRequested.get()) return
 
             val b = Builder().setSession("Xray").setMtu(1500)
                 .addAddress("10.255.0.1", 30).addRoute("0.0.0.0", 0)
@@ -116,7 +123,16 @@ class XrayVpnService : VpnService() {
                 .addDnsServer("1.1.1.1").addDnsServer("8.8.8.8")
             applyApps(b, config.mode, config.apps)
             val establishedPfd = b.establish() ?: error("VPN permission was revoked")
-            pfd = establishedPfd
+            val accepted = synchronized(lifecycleLock) {
+                if (stopRequested.get()) false else {
+                    pfd = establishedPfd
+                    true
+                }
+            }
+            if (!accepted) {
+                establishedPfd.close()
+                return
+            }
 
             LibXray.registerDialerController(object : DialerController {
                 override fun protectFd(fd: Long): Boolean = protect(fd.toInt())
@@ -131,16 +147,27 @@ class XrayVpnService : VpnService() {
                     put("xrayJson", json)
                 })
             }
-            val resStr = LibXray.invoke(req.toString())
+            val resStr = synchronized(xrayLock) {
+                if (stopRequested.get()) null else LibXray.invoke(req.toString())
+            } ?: return
             val res = JSONObject(resStr)
             if (!res.optBoolean("success")) {
                 val err = res.optString("error").ifBlank { "Failed to start Xray" }
                 error(err)
             }
-            broadcastState(true)
+            synchronized(lifecycleLock) {
+                if (stopRequested.get()) return
+                broadcastState(true)
+            }
         } catch (e: Throwable) {
             val errMsg = e.message ?: e.toString()
-            stopVpn(errMsg)
+            val shouldReport = synchronized(lifecycleLock) {
+                if (stopRequested.get()) false else {
+                    stopRequested.set(true)
+                    true
+                }
+            }
+            if (shouldReport) stopVpn(errMsg)
         }
     }
 
@@ -182,15 +209,18 @@ class XrayVpnService : VpnService() {
     }
 
     private fun stopVpn(error: String? = null) {
+        val descriptor = synchronized(lifecycleLock) {
+            stopRequested.set(true)
+            pfd.also { pfd = null }
+        }
         try {
             val req = JSONObject().apply {
                 put("apiVersion", LibXray.LibXrayAPIVersion)
                 put("method", "stopXray")
             }
-            LibXray.invoke(req.toString())
+            synchronized(xrayLock) { LibXray.invoke(req.toString()) }
         } catch (_: Throwable) {}
-        try { pfd?.close() } catch (_: Throwable) {}
-        pfd = null
+        try { descriptor?.close() } catch (_: Throwable) {}
         broadcastState(false, error)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
