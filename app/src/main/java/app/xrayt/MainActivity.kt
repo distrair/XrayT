@@ -340,7 +340,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(if (running) "Connected" else "Ready when you are", style = MaterialTheme.typography.titleLargeEmphasized)
+                    Text(if (running) "Connected" else "Disconnected", style = MaterialTheme.typography.titleLargeEmphasized)
                 }
             }
         }
