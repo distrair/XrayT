@@ -140,8 +140,7 @@ class XrayVpnService : VpnService() {
             broadcastState(true)
         } catch (e: Throwable) {
             val errMsg = e.message ?: e.toString()
-            broadcastState(false, errMsg)
-            stopVpn()
+            stopVpn(errMsg)
         }
     }
 
@@ -182,7 +181,7 @@ class XrayVpnService : VpnService() {
         envReady = true
     }
 
-    private fun stopVpn() {
+    private fun stopVpn(error: String? = null) {
         try {
             val req = JSONObject().apply {
                 put("apiVersion", LibXray.LibXrayAPIVersion)
@@ -192,7 +191,7 @@ class XrayVpnService : VpnService() {
         } catch (_: Throwable) {}
         try { pfd?.close() } catch (_: Throwable) {}
         pfd = null
-        broadcastState(false)
+        broadcastState(false, error)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -200,7 +199,7 @@ class XrayVpnService : VpnService() {
     override fun onRevoke() = stopVpn()
     override fun onDestroy() {
         try { unregisterReceiver(queryReceiver) } catch (_: Exception) {}
-        stopVpn()
+        stopVpn(lastError.value)
         super.onDestroy()
     }
 }
