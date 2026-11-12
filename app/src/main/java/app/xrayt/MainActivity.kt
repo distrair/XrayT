@@ -291,7 +291,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(profileName, style = MaterialTheme.typography.headlineSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(profileName, style = MaterialTheme.typography.headlineSmallEmphasized, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
                 sub?.name?.ifBlank { sub.url } ?: "Choose a profile from Subscriptions",
                 style = MaterialTheme.typography.bodyMedium,
@@ -318,7 +318,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
             ) {
                 Button(
                     onClick = { if (running) onDisconnect() else onConnect() },
-                    modifier = Modifier.size(184.dp),
+                    modifier = Modifier.size(200.dp),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = buttonContainer,
@@ -331,14 +331,14 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                     }
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(if (running) "Connected" else "Ready when you are", style = MaterialTheme.typography.titleLarge)
+                    Text(if (running) "Connected" else "Ready when you are", style = MaterialTheme.typography.titleLargeEmphasized)
                 }
             }
         }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.large,
+            shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
