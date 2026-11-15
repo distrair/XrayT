@@ -37,7 +37,7 @@ android {
 
     defaultConfig {
         applicationId = "app.xrayt"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
         versionCode = vCode
         versionName = vName
