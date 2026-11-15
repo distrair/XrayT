@@ -159,7 +159,7 @@ class XrayVpnService : VpnService() {
                 if (stopRequested.get()) return
                 broadcastState(true)
             }
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             val errMsg = e.message ?: e.toString()
             val shouldReport = synchronized(lifecycleLock) {
                 if (stopRequested.get()) false else {
