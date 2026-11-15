@@ -8,12 +8,19 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object Fetcher {
+    const val MAX_BODY_BYTES = 8 * 1024 * 1024 // 8 MB
+
     val defaultUserAgent: String
         get() = "v2rayNG/${BuildConfig.VERSION_NAME.removePrefix("v")}"
 
     /** Blocking; call from a background thread. Returns raw Xray JSON configs. */
     fun fetch(s: Subscription): List<String> {
-        val c = URL(s.url).openConnection() as HttpURLConnection
+        val url = runCatching { URL(s.url) }.getOrElse { error("Invalid subscription URL: ${s.url}") }
+        val proto = url.protocol.lowercase()
+        if (proto !in listOf("https", "http")) {
+            error("Unsupported URL protocol '$proto'. Only HTTPS and HTTP are supported.")
+        }
+        val c = url.openConnection() as HttpURLConnection
         c.connectTimeout = 15_000
         c.readTimeout = 20_000
         c.setRequestProperty("User-Agent", s.userAgent.ifBlank { defaultUserAgent })
@@ -24,8 +31,26 @@ object Fetcher {
         }
         try {
             if (c.responseCode !in 200..299) error("HTTP ${c.responseCode}")
-            return parse(c.inputStream.bufferedReader().readText())
+            val body = readBodyWithLimit(c, MAX_BODY_BYTES)
+            return parse(body)
         } finally { c.disconnect() }
+    }
+
+    private fun readBodyWithLimit(c: HttpURLConnection, maxBytes: Int): String {
+        val stream = c.inputStream
+        val out = java.io.ByteArrayOutputStream()
+        val buf = ByteArray(8 * 1024)
+        var total = 0
+        while (true) {
+            val n = stream.read(buf)
+            if (n < 0) break
+            total += n
+            if (total > maxBytes) {
+                error("Subscription response exceeded maximum size limit (${maxBytes / (1024 * 1024)}MB)")
+            }
+            out.write(buf, 0, n)
+        }
+        return out.toString(Charsets.UTF_8.name())
     }
 
     fun parse(body: String): List<String> {
