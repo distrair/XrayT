@@ -1,6 +1,6 @@
 package app.xrayt
 
-import android.util.Base64
+import java.util.Base64
 import libXray.LibXray
 import org.json.JSONArray
 import org.json.JSONObject
@@ -56,9 +56,10 @@ object Fetcher {
     fun parse(body: String): List<String> {
         var text = body.trim().removePrefix("\uFEFF").trim()
         if (!isJson(text) && !isShareLinkList(text)) {
-            val decoded = listOf(Base64.DEFAULT, Base64.URL_SAFE).firstNotNullOfOrNull { flags ->
+            val decoders = listOf(Base64.getDecoder(), Base64.getUrlDecoder(), Base64.getMimeDecoder())
+            val decoded = decoders.firstNotNullOfOrNull { decoder ->
                 runCatching {
-                    String(Base64.decode(text, flags), Charsets.UTF_8)
+                    String(decoder.decode(text), Charsets.UTF_8)
                         .trim().removePrefix("\uFEFF").trim()
                 }.getOrNull()?.takeIf { isJson(it) || isShareLinkList(it) }
             }
