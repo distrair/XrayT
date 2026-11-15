@@ -23,6 +23,7 @@ object GeoUpdater {
     fun update(ctx: Context) {
         val dir = ctx.filesDir
         val tmps = FILES.map { File(dir, "$it.tmp") }
+        val backups = mutableListOf<Pair<File, File>>()
         try {
             FILES.forEachIndexed { i, f ->
                 val got = download(BASE + f, tmps[i])
@@ -30,13 +31,45 @@ object GeoUpdater {
                 if (want != null && want != got) error("Checksum mismatch for $f")
                 if (tmps[i].length() < 100_000) error("$f looks too small, aborting")
             }
+            // Step 1: Backup existing destination files before replacing
+            FILES.forEach { f ->
+                val current = File(dir, f)
+                if (current.exists()) {
+                    val bak = File(dir, "$f.bak")
+                    if (current.renameTo(bak)) {
+                        backups.add(current to bak)
+                    } else {
+                        current.copyTo(bak, overwrite = true)
+                        backups.add(current to bak)
+                    }
+                }
+            }
+            // Step 2: Atomic move/overwrite of validated temporary files
             FILES.forEachIndexed { i, f ->
                 val dst = File(dir, f)
-                if (!tmps[i].renameTo(dst)) tmps[i].copyTo(dst, overwrite = true)
+                if (!tmps[i].renameTo(dst)) {
+                    tmps[i].copyTo(dst, overwrite = true)
+                    tmps[i].delete()
+                }
             }
+            // Both files successfully replaced; clean up backups
+            backups.forEach { (_, bak) -> bak.delete() }
+            backups.clear()
             Store(ctx).geoUpdated = System.currentTimeMillis()
+        } catch (e: Exception) {
+            // Rollback on any failure to guarantee no mixed-version state
+            backups.forEach { (current, bak) ->
+                if (bak.exists()) {
+                    if (!bak.renameTo(current)) {
+                        bak.copyTo(current, overwrite = true)
+                        bak.delete()
+                    }
+                }
+            }
+            throw e
         } finally {
             tmps.forEach { it.delete() }
+            FILES.forEach { File(dir, "$it.bak").delete() }
         }
     }
 
