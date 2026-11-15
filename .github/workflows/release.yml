@@ -58,11 +58,18 @@ jobs:
           if [ -z "$XRAY_TAG" ]; then
             XRAY_TAG=$(curl -sSL -H "User-Agent: GitHubActions" https://api.github.com/repos/XTLS/libXray/releases/latest | grep -o '"tag_name": *"[^"]*"' | head -n1 | cut -d'"' -f4)
           fi
-          echo "xray_tag=${XRAY_TAG:-latest}" >> $GITHUB_OUTPUT
-          echo "Bundling libXray: ${XRAY_TAG:-latest}"
+          XRAY_TAG="${XRAY_TAG:-latest}"
+          echo "xray_tag=${XRAY_TAG}" >> $GITHUB_OUTPUT
+          echo "Bundling libXray: ${XRAY_TAG}"
 
-          curl -sSL -o libxray.zip https://github.com/XTLS/libXray/releases/latest/download/libxray-android.zip
+          if [ "$XRAY_TAG" != "latest" ]; then
+            DOWNLOAD_URL="https://github.com/XTLS/libXray/releases/download/${XRAY_TAG}/libxray-android.zip"
+          else
+            DOWNLOAD_URL="https://github.com/XTLS/libXray/releases/latest/download/libxray-android.zip"
+          fi
+          curl -sSL -o libxray.zip "$DOWNLOAD_URL"
           unzip -j libxray.zip "*/libXray.aar" -d app/libs/
+          test -f app/libs/libXray.aar || { echo "libXray.aar was not extracted"; exit 1; }
           rm -f libxray.zip
           ls -lh app/libs/
 
