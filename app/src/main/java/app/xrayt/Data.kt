@@ -22,13 +22,26 @@ data class Subscription(
         .put("configs", JSONArray(configs)).put("t", updatedAt)
 
     companion object {
-        fun fromJson(o: JSONObject): Subscription {
-            val a = o.getJSONArray("configs")
-            return Subscription(
-                o.getString("id"), o.optString("name"), o.optString("url"), o.optString("hwid"),
-                o.optString("ua"), o.optString("hdr"),
-                List(a.length()) { a.getString(it) }, o.optLong("t")
-            )
+        fun fromJson(o: JSONObject): Subscription? {
+            return try {
+                val id = o.optString("id").ifBlank { UUID.randomUUID().toString() }
+                val a = o.optJSONArray("configs") ?: JSONArray()
+                val configs = (0 until a.length()).mapNotNull { idx ->
+                    a.optString(idx)?.takeIf { it.isNotBlank() }
+                }
+                Subscription(
+                    id = id,
+                    name = o.optString("name"),
+                    url = o.optString("url"),
+                    hwid = o.optString("hwid"),
+                    userAgent = o.optString("ua"),
+                    extraHeaders = o.optString("hdr"),
+                    configs = configs,
+                    updatedAt = o.optLong("t", 0L)
+                )
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 }
@@ -37,14 +50,31 @@ fun configName(raw: String): String =
     try { JSONObject(raw).optString("remarks").ifBlank { "Config" } } catch (e: Exception) { "Config" }
 
 class Store(ctx: Context) {
+    companion object {
+        const val SCHEMA_VERSION = 1
+    }
+
     private val sp = ctx.applicationContext.getSharedPreferences("xray", Context.MODE_PRIVATE)
 
     fun loadSubs(): List<Subscription> {
-        val a = JSONArray(sp.getString("subs", "[]"))
-        return List(a.length()) { Subscription.fromJson(a.getJSONObject(it)) }
+        val raw = sp.getString("subs", "[]") ?: "[]"
+        return try {
+            val a = JSONArray(raw)
+            (0 until a.length()).mapNotNull { idx ->
+                val obj = a.optJSONObject(idx) ?: return@mapNotNull null
+                Subscription.fromJson(obj)
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
-    fun saveSubs(l: List<Subscription>) =
-        sp.edit().putString("subs", JSONArray(l.map { it.toJson() }).toString()).apply()
+
+    fun saveSubs(l: List<Subscription>) {
+        sp.edit()
+            .putInt("schema_version", SCHEMA_VERSION)
+            .putString("subs", JSONArray(l.map { it.toJson() }).toString())
+            .apply()
+    }
 
     var mode: AppMode
         get() = runCatching { AppMode.valueOf(sp.getString("mode", AppMode.BYPASS_SELECTED.name)!!) }
