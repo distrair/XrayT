@@ -31,7 +31,6 @@ android {
     namespace = "app.xrayt"
     compileSdk = 37
     buildToolsVersion = "36.0.0"
-    testBuildType = "release"
 
     val vCode = (project.findProperty("appVersionCode") as? String)?.toIntOrNull() ?: 1
     val vName = (project.findProperty("appVersionName") as? String) ?: "1.0"
