@@ -572,6 +572,7 @@ fun SubsTab(store: Store, subs: List<Subscription>, save: (List<Subscription>) -
                                             )
                                             pingResults[s.id]?.getOrNull(i)?.let { ping ->
                                                 val label = ping.delayMs?.let { "$it ms" }
+                                                    ?: ping.error
                                                     ?: if (ping.timedOut) "Timeout" else "Failed"
                                                 Text(
                                                     label,
