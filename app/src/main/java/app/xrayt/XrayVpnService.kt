@@ -199,11 +199,23 @@ class XrayVpnService : VpnService() {
 
     private fun initEnv() {
         if (envReady) return
+        val missing = mutableListOf<String>()
         for (f in listOf("geoip.dat", "geosite.dat")) {
             val out = File(filesDir, f)
-            if (!out.exists()) try {
-                assets.open(f).use { i -> out.outputStream().use { i.copyTo(it) } }
-            } catch (_: Exception) {}
+            if (!out.exists() || out.length() == 0L) {
+                val copied = try {
+                    assets.open(f).use { i -> out.outputStream().use { i.copyTo(it) } }
+                    out.length() > 0L
+                } catch (_: Exception) {
+                    false
+                }
+                if (!copied && (!out.exists() || out.length() == 0L)) {
+                    missing.add(f)
+                }
+            }
+        }
+        if (missing.isNotEmpty()) {
+            error("Geodata assets missing: ${missing.joinToString()}. Please update Geo files before connecting.")
         }
         envReady = true
     }
