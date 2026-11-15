@@ -91,7 +91,10 @@ jobs:
           echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
       - name: Run Unit Tests
-        run: ./gradlew testReleaseUnitTest
+        env:
+          APP_VERSION_NAME: ${{ steps.version.outputs.tag }}
+          APP_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew test -PappVersionCode="$APP_VERSION_CODE" -PappVersionName="$APP_VERSION_NAME"
 
       - name: Build Release APK
         env:
