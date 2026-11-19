@@ -73,16 +73,20 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
     val colorEffectsSpec = if (reducedMotion) snap<Color>() else MaterialTheme.motionScheme.fastEffectsSpec()
     val floatSpatialSpec = if (reducedMotion) snap<Float>() else MaterialTheme.motionScheme.fastSpatialSpec()
     val dpSpatialSpec = if (reducedMotion) snap<Dp>() else MaterialTheme.motionScheme.fastSpatialSpec()
+    val intOffsetSpatialSpec = if (reducedMotion) snap<IntOffset>() else MaterialTheme.motionScheme.fastSpatialSpec()
     val floatEffectsSpec = if (reducedMotion) snap<Float>() else MaterialTheme.motionScheme.fastEffectsSpec()
 
     val targetContainer = when (connectionState) {
         ConnectionState.Connected -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.secondaryContainer
+        ConnectionState.Connecting -> MaterialTheme.colorScheme.primaryContainer
+        ConnectionState.Disconnecting -> MaterialTheme.colorScheme.surfaceContainerHighest
+        ConnectionState.Disconnected -> MaterialTheme.colorScheme.secondaryContainer
     }
     val targetContent = when (connectionState) {
         ConnectionState.Connected -> MaterialTheme.colorScheme.onPrimary
-        ConnectionState.Connecting -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSecondaryContainer
+        ConnectionState.Connecting -> MaterialTheme.colorScheme.onPrimaryContainer
+        ConnectionState.Disconnecting -> MaterialTheme.colorScheme.onSurfaceVariant
+        ConnectionState.Disconnected -> MaterialTheme.colorScheme.onSecondaryContainer
     }
 
     val buttonContainer by animateColorAsState(
@@ -98,7 +102,7 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
 
     val targetScale = when (connectionState) {
         ConnectionState.Connected -> 1.04f
-        ConnectionState.Connecting, ConnectionState.Disconnecting -> 0.96f
+        ConnectionState.Connecting, ConnectionState.Disconnecting -> 0.95f
         ConnectionState.Disconnected -> 1.0f
     }
     val buttonScale by animateFloatAsState(
@@ -202,7 +206,8 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                                 if (reducedMotion) {
                                     EnterTransition.None togetherWith ExitTransition.None
                                 } else {
-                                    fadeIn(animationSpec = floatEffectsSpec) togetherWith fadeOut(animationSpec = floatEffectsSpec)
+                                    (slideInVertically(animationSpec = intOffsetSpatialSpec) { it / 3 } + fadeIn(animationSpec = floatEffectsSpec))
+                                        .togetherWith(slideOutVertically(animationSpec = intOffsetSpatialSpec) { -it / 3 } + fadeOut(animationSpec = floatEffectsSpec))
                                 }
                             },
                             label = "buttonContentTransition"
@@ -210,10 +215,9 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 when (state) {
                                     ConnectionState.Connecting, ConnectionState.Disconnecting -> {
-                                        CircularProgressIndicator(
+                                        LoadingIndicator(
                                             modifier = Modifier.size(40.dp),
-                                            color = buttonContent,
-                                            strokeWidth = 3.5.dp
+                                            color = buttonContent
                                         )
                                     }
                                     ConnectionState.Connected, ConnectionState.Disconnected -> {
@@ -243,7 +247,8 @@ fun ConnectTab(store: Store, subs: List<Subscription>, onConnect: () -> Unit, on
                                 if (reducedMotion) {
                                     EnterTransition.None togetherWith ExitTransition.None
                                 } else {
-                                    fadeIn(animationSpec = floatEffectsSpec) togetherWith fadeOut(animationSpec = floatEffectsSpec)
+                                    (slideInVertically(animationSpec = intOffsetSpatialSpec) { it / 3 } + fadeIn(animationSpec = floatEffectsSpec))
+                                        .togetherWith(slideOutVertically(animationSpec = intOffsetSpatialSpec) { -it / 3 } + fadeOut(animationSpec = floatEffectsSpec))
                                 }
                             },
                             label = "statusTextTransition"
